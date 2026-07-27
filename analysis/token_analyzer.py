@@ -131,7 +131,7 @@ def main():
     analyzer = TokenAnalyzer()
     
     # 2. 입출력 경로 지정
-    input_file = "data/prompts.csv"
+    input_file = "benchmarks/datasets/prompts.csv"
     output_file = "outputs/tokenization_analysis.csv"
 
     # 3. 데이터 로딩 (파일 없으면 더미데이터 작동)
