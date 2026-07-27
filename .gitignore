@@ -7,3 +7,4 @@ venv/
 *.safetensors
 *.bin
 outputs/
+ai-sec-env/
