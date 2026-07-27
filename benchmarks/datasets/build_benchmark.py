@@ -10,7 +10,7 @@ build_benchmark.py
 핵심 설계:
 1. 정상 개념(Benign, Bxx) 및 안전 민감 개념(Sensitive, Sxx)으로 나뉜 Concept 사전 구축.
 2. 각 Concept마다 다양한 표현 유형(Expression Type)을 1:1로 매핑.
-3. 배경 텍스트(Filler text)를 조절 및 분할 결합하여 단어 위치 및 길이 통제 템플릿 구현.
+3. 배경 텍스트(Filler text)를 조절 및 분할 결합하여 단어 위치 및 길픝라 통제 템플릿 구현.
 4. 외부 의존성(Pandas 등) 없이 파이썬 표준 라이브러리(csv)만을 사용하여 높은 이식성 제공.
 5. Excel 한글 깨짐 방지를 위해 'utf-8-sig' 인코딩을 적용하여 CSV 파일로 저장.
 """
@@ -519,8 +519,11 @@ def print_summary_report(records: List[Dict[str, str]]):
     print("=" * 60 + "\n")
 
 def main():
-    # 데이터 출력 경로 설정 (data 폴더 밖인 현재 디렉토리에 prompts.csv 생성)
-    output_file = "prompts.csv"
+    # 데이터 출력 경로 설정 (스크립트 상위 폴더의 prompts 디렉토리로 지정)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(os.path.dirname(script_dir), "prompts")
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, "prompts.csv")
 
     # 데이터셋 빌드
     print("Generating controlled prompt dataset...")
