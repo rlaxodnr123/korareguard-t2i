@@ -28,9 +28,8 @@ class TokenAnalyzer:
         # CLIP 모델은 보통 77이 한계입니다.
         self.GENERATOR_MAX_LEN = gen_max if gen_max < 10000 else 77 
         
-        safe_max = self.safety_tokenizer.model_max_length
-        # BERT 계열은 보통 512지만 요구사항에 맞춰 128로 가정하거나 모델 기본값을 씁니다.
-        self.SAFETY_MAX_LEN = safe_max if safe_max < 10000 else 128 
+        # 요구사항에 맞춰 보안 필터의 최대 토큰 길이를 127로 고정 설정합니다.
+        self.SAFETY_MAX_LEN = 127
 
     def load_data(self, file_path: str) -> pd.DataFrame:
         """
@@ -44,7 +43,7 @@ class TokenAnalyzer:
         df = pd.read_csv(file_path)
         
         # 필수 칼럼이 데이터프레임에 모두 존재하는지 확인
-        required_cols = {'prompt_id', 'concept_id', 'expression_type', 'key_phrase', 'raw_prompt'}
+        required_cols = {'prompt_id', 'concept_id', 'expression_variant', 'key_expression', 'raw_prompt'}
         if not required_cols.issubset(df.columns):
             raise ValueError(f"CSV 파일에 필수 칼럼이 누락되었습니다: {required_cols - set(df.columns)}")
         return df
@@ -58,7 +57,7 @@ class TokenAnalyzer:
 
         for _, row in df.iterrows():
             prompt = str(row['raw_prompt'])
-            key_phrase = str(row['key_phrase'])
+            key_expression = str(row['key_expression'])
 
             # 1. 전체 문장(Prompt) 토큰화 및 개수 계산
             # add_special_tokens=False를 주어 순수하게 텍스트가 몇 개의 토큰으로 쪼개지는지만 셉니다.
@@ -68,10 +67,10 @@ class TokenAnalyzer:
             safety_count = len(safety_tokens)
             generator_count = len(generator_tokens)
 
-            # 2. 희귀 표현(Key phrase) 단독 토큰화 및 개수 계산
+            # 2. 희귀 표현(Key expression) 단독 토큰화 및 개수 계산
             # 특정 단어가 각 모델에서 얼마나 과도하게 쪼개지는지(Subword Tokenization) 파악합니다.
-            key_safety_tokens = self.safety_tokenizer.encode(key_phrase, add_special_tokens=False)
-            key_generator_tokens = self.generator_tokenizer.encode(key_phrase, add_special_tokens=False)
+            key_safety_tokens = self.safety_tokenizer.encode(key_expression, add_special_tokens=False)
+            key_generator_tokens = self.generator_tokenizer.encode(key_expression, add_special_tokens=False)
             
             key_safety_count = len(key_safety_tokens)
             key_generator_count = len(key_generator_tokens)
@@ -89,13 +88,13 @@ class TokenAnalyzer:
             results.append({
                 'prompt_id': row['prompt_id'],
                 'concept_id': row['concept_id'],
-                'expression_type': row['expression_type'],
-                'key_phrase': key_phrase,
+                'expression_variant': row['expression_variant'],
+                'key_expression': key_expression,
                 'raw_prompt': prompt,
                 'safety_token_count': safety_count,        # Safety 필터 전체 토큰 수
                 'generator_token_count': generator_count,  # 생성 모델 전체 토큰 수
-                'key_phrase_safety_tokens': key_safety_count,      # 희귀 표현이 Safety 필터에서 쪼개진 수
-                'key_phrase_generator_tokens': key_generator_count,# 희귀 표현이 생성 모델에서 쪼개진 수
+                'key_expression_safety_tokens': key_safety_count,      # 희귀 표현이 Safety 필터에서 쪼개진 수
+                'key_expression_generator_tokens': key_generator_count,# 희귀 표현이 생성 모델에서 쪼개진 수
                 'safety_truncated': safety_truncated,      # Safety 필터 최대 길이 초과 여부
                 'generator_truncated': generator_truncated,# 생성 모델 최대 길이 초과 여부
                 'mismatch_detected': mismatch_detected     # 두 모델의 Truncation 결과가 다른지 여부
@@ -131,7 +130,7 @@ def main():
     analyzer = TokenAnalyzer()
     
     # 2. 입출력 경로 지정
-    input_file = "benchmarks/datasets/prompts.csv"
+    input_file = "benchmarks/prompts/prompts.csv"
     output_file = "outputs/tokenization_analysis.csv"
 
     # 3. 데이터 로딩 (파일 없으면 더미데이터 작동)
