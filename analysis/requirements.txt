@@ -1,0 +1,31 @@
+# Student 2 — Tokenization & Truncation Analysis
+# 환경: Python 3.14.6 (Windows), venv at repo root .venv/
+#
+# PHASE 1~3 (tokenizer inspection / span mapping / length distribution) 은
+# torch 없이 실행 가능합니다. tokenizer 만 로드하므로 GPU 도 불필요합니다.
+#
+# 설치:
+#   py -3.14 -m venv .venv
+#   .venv\Scripts\python.exe -m pip install -r analysis/requirements.txt
+
+transformers==5.14.1
+tokenizers==0.22.2
+huggingface-hub==1.25.1
+
+# SGuard 의 chat template 은 Jinja2 템플릿이다.
+# jinja2 가 없으면 apply_chat_template() 이 실패하고,
+# 그러면 "safety filter 가 실제로 무엇을 읽었는가" 를 측정할 수 없다.
+jinja2==3.1.6
+
+# AltDiffusion(AltCLIP)의 tokenizer 는 sentencepiece.bpe.model 파일을 쓰므로
+# sentencepiece 가 없으면 로드 자체가 실패합니다. protobuf 는 그 변환에 필요합니다.
+sentencepiece==0.2.2
+protobuf==7.35.1
+
+pandas==3.0.5
+numpy==2.5.1
+
+# --- 아래는 아직 불필요. 실제 generation pipeline 검증 단계에서만 추가 ---
+# torch
+# diffusers
+# matplotlib      # PHASE 9 figures
