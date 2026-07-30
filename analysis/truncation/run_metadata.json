@@ -1,0 +1,61 @@
+{
+  "mode": "full",
+  "generated_at_utc": "2026-07-30T16:24:26.804972+00:00",
+  "git_commit": "a17bd28a7f1c6e90a1629ec3c893c1e487e90397",
+  "n_prompts": 432,
+  "n_conditions": 3,
+  "n_rows": 1296,
+  "n_error_rows": 0,
+  "elapsed_seconds": 4.38,
+  "pilot_concepts": null,
+  "experimental_token_cap": 77,
+  "experimental_token_cap_note": "연구가 정의한 user content 예산. SGuard native limit 이 아님.",
+  "sguard_native_context": 131072,
+  "model_revisions": {
+    "SamsungSDS-Research/SGuard-ContentFilter-2B-v1": "870ae18c091f06f8f96e4119051f4cd063c83481",
+    "BAAI/AltDiffusion-m18": "b3c429d6aa48346ab421ea314375d4a10b9b66e9"
+  },
+  "conditions": [
+    {
+      "label": "SGuard native",
+      "model_id": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
+      "input_policy": "native",
+      "add_special_tokens": false,
+      "cap": null,
+      "cap_kind": "none",
+      "max_length_source": "model config max_position_embeddings"
+    },
+    {
+      "label": "SGuard constrained_77",
+      "model_id": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
+      "input_policy": "constrained_77",
+      "add_special_tokens": false,
+      "cap": 77,
+      "cap_kind": "user_content",
+      "max_length_source": "experimental cap on user content (not native limit)"
+    },
+    {
+      "label": "AltDiffusion native",
+      "model_id": "BAAI/AltDiffusion-m18",
+      "input_policy": "native",
+      "add_special_tokens": false,
+      "cap": 75,
+      "cap_kind": "native",
+      "max_length_source": "tokenizer.model_max_length 77 - 2 special tokens = 75 content budget"
+    }
+  ],
+  "environment": {
+    "python": "3.14.6",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "transformers": "5.14.1",
+    "tokenizers": "0.22.2",
+    "sentencepiece": "0.2.2",
+    "pandas": "3.0.5",
+    "numpy": "2.5.1",
+    "torch": null,
+    "diffusers": null
+  },
+  "inputs": {
+    "prompts_csv": "benchmarks/prompts/prompts.csv"
+  }
+}
