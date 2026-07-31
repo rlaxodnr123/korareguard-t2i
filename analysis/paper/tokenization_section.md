@@ -6,8 +6,8 @@
 >   에서 나온 실측값이며, `prompts.csv` 를 다시 생성하면 값이 바뀌므로 그때 갱신한다.
 > - 수치 재산출: `python analysis/truncation/analyze_tokens.py --full --overwrite`
 >   후 `analysis/figures/*.py` 실행.
-> - 확정된 부분(RQ-T1, T2, T4, T5, T6, T7, T8)만 서술했다. 팀 결과가 필요한
->   RQ-T3, RQ-T9, H6 는 자리만 표시해 두었다.
+> - 확정된 부분(RQ-T1 ~ T8)만 서술했다. 팀 결과가 필요한 RQ-T9, H6 는
+>   자리만 표시해 두었다.
 > - 인과 표현을 쓰지 않는다. 관측·연관까지만 서술한다.
 > - 데이터 기준: prompts.csv 432개, 3개 분석 조건, 1,296행. 검증 28건 통과, error 0.
 
@@ -84,7 +84,7 @@ the one our analysis records.
 AltDiffusion for identical Korean input (1.44× when restricted to the key
 expressions alone). A budget of 77 SGuard tokens therefore covers substantially
 less text than a budget of 75 AltDiffusion tokens. This asymmetry is not an
-artifact to be corrected; it is the mechanism the cross-component analysis in X.6
+artifact to be corrected; it is the mechanism the cross-component analysis in X.7
 measures.
 
 ---
@@ -128,7 +128,54 @@ of the same referent and were revised before the final run.
 
 ---
 
-## X.4 Length levels are not tokenizer-calibrated (RQ-T4)
+## X.4 Budget consumption does not increase with rarity (RQ-T3)
+
+Section X.3 establishes that rare expressions are more finely segmented per
+character. A natural follow-up is whether substituting a rare expression
+therefore consumes more of a component's token budget. **It does not.**
+
+Because filler text is held constant within each concept × length group, two
+prompts that share a concept, length level and key position differ only in the
+key expression, and the difference in their total token counts isolates the
+rarity effect. Over the 216 such pairs, substituting the rare form *reduces*
+the prompt's content-token count by a median of 3.50 tokens for SGuard and 2.50
+for AltDiffusion.
+
+The measurement is well controlled: the total-token difference equals the
+key-token difference exactly in **216/216 pairs** for both components, leaving no
+residual attributable to filler or to boundary effects. The distribution is also
+identical across the three length levels, as expected when only the key varies.
+
+The key expression occupies a small share of either budget:
+
+| Component | Content budget | Rarity | Key tokens (median) | Share of budget |
+|---|---|---|---|---|
+| SGuard | 77 | common | 12.0 | 15.6% |
+| SGuard | 77 | rare | 7.5 | 9.7% |
+| AltDiffusion | 75 | common | 7.5 | 10.0% |
+| AltDiffusion | 75 | rare | 5.0 | 6.7% |
+
+Consequently, rarity rarely determines whether the key expression fits within the
+budget at all: substituting the rare form changes the outcome in only 1 of 216
+pairs for SGuard and 3 of 216 for AltDiffusion, and all four cases occur at
+`near_limit`, where the key already sits at the boundary.
+
+**Taken together with X.3, the two measurements point in opposite directions.**
+Rare expressions are denser per character but shorter overall, and the second
+effect dominates: the chain "rare expression → higher token consumption → budget
+pressure → truncation of the key" is not supported in this benchmark. Whatever
+association exists between rarity and truncation must arise through a different
+route than budget consumption.
+
+> **작성 메모** — 이건 음성 결과이고, 원래 가설 사슬의 한 고리를 끊는다.
+> 설계 문서의 chain (rare -> 더 많은 토큰 -> 예산 압박 -> key 절단)에서
+> 두 번째 화살표가 성립하지 않는다는 것을 실측으로 보인 것이다.
+> 숨기지 말고 명시할 것. 216/216 잔차 0 은 통제가 유효하다는 근거라
+> 같이 제시하면 결과의 신뢰도가 올라간다.
+
+---
+
+## X.5 Length levels are not tokenizer-calibrated (RQ-T4)
 
 The benchmark's `short` / `near_limit` / `over_limit` labels were assigned by
 character length at design time. Measured in content tokens they separate
@@ -153,14 +200,14 @@ level truncation is saturated and offers no gradient.
 
 ---
 
-## X.5 Position and key retention (RQ-T5, RQ-T7)
+## X.6 Position and key retention (RQ-T5, RQ-T7)
 
 Key position was manipulated by string construction (front / middle / back).
 We verified that this manipulation survives tokenization: the normalized token
 position of the key matches its character position to within 0.04, and the two
 components agree with each other to a median of 0.013. Token-level repositioning
 was not attempted, as it would require a different prompt string per component
-and would make the cross-component comparison in X.6 undefined.
+and would make the cross-component comparison in X.7 undefined.
 
 Under condition 1 the key expression is fully visible for all 432 prompts. The
 remaining two conditions show a consistent gradient in position and length:
@@ -195,7 +242,7 @@ each component's content budget.)*
 
 ---
 
-## X.6 Cross-component visibility mismatch (RQ-T6, RQ-T8)
+## X.7 Cross-component visibility mismatch (RQ-T6, RQ-T8)
 
 Classifying every prompt by whether each component retains the key expression in
 full yields four cells. The two SGuard conditions produce **opposite** mismatch
@@ -238,7 +285,7 @@ We confirmed this empirically: applying a 127-token cap to the benchmark yields
 
 ---
 
-## X.7 Threats to validity
+## X.8 Threats to validity
 
 **Single filter, single generator.** All observations are specific to
 SGuard-ContentFilter-2B-v1 and AltDiffusion-m18. We do not claim generalization
@@ -295,7 +342,7 @@ resolved by computing spans from the in-template encoding.
 
 | Section | Requires |
 |---|---|
-| RQ-T3 — token budget consumption | in-house; not yet run |
+| 
 | RQ-T9 — association with safety outcomes (Figure G) | `safety_results.csv` |
 | H6 — association with generation outcomes (Figure F) | `generation_results.csv`, `image_labels.csv` |
 | Root-cause case analysis | both of the above |
