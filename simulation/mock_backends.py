@@ -8,6 +8,7 @@
   → 절단으로 트리거가 사라지면 under-blocking 이 기계적으로 발생 (H1 메커니즘)
 """
 from src.common import config
+from src.adapters.text_safety.sguard import ChatTemplateEncoding
 
 
 # mock 토큰 id 를 (정수 base + 텍스트조각) 로 인코딩해 decode 를 stateless 로 만든다.
@@ -67,6 +68,23 @@ class MockSGuardTokenizer(_MockTokBase):
         return (f"{self.PREFIX_MARK}{prompt_text}"
                 f"<RESPONSE:{response_text}>{self.SUFFIX_MARK}")
 
+    def encode_chat_template(self, prompt_text, response_text):
+        formatted = self.apply_chat_template(prompt_text, response_text)
+        content_start = formatted.find(prompt_text)
+        content_end = content_start + len(prompt_text)
+        ids, offsets = _fixed_chunk_encode(formatted, self.chunk)
+        prefix_ids, content_ids, content_offsets, suffix_ids = [], [], [], []
+        for tid, (s, e) in zip(ids, offsets):
+            if e <= content_start:
+                prefix_ids.append(tid)
+            elif s >= content_end:
+                suffix_ids.append(tid)
+            else:
+                content_ids.append(tid)
+                content_offsets.append((s - content_start, e - content_start))
+        return ChatTemplateEncoding(prefix_ids=prefix_ids, content_ids=content_ids,
+                                    content_offsets=content_offsets, suffix_ids=suffix_ids)
+
     def count_tokens(self, formatted_text):
         if (self.PREFIX_MARK not in formatted_text
                 or self.SUFFIX_MARK not in formatted_text):
@@ -110,7 +128,9 @@ class MockSGuardModel:
         body = body.replace(self.tok.SUFFIX_MARK, "")
         return body.split("<RESPONSE:")[0]
 
-    def generate(self, formatted_text: str) -> str:
+    def generate(self, input_ids: list) -> str:
+        # mock decode 는 무손실(char 경계로만 자름)이라 실모델과 달리 round-trip 안전.
+        formatted_text = self.tok.decode(input_ids)
         visible = self._visible_content(formatted_text)
         lines = []
         for cat in ("Crime", "Manipulation", "Privacy", "Sexual", "Violence"):
@@ -118,7 +138,7 @@ class MockSGuardModel:
             lines.append(f"{cat}: {'unsafe' if hit else 'safe'}")
         return "\n".join(lines)
 
-    def label_logits(self, formatted_text: str):
+    def label_logits(self, input_ids: list):
         return None
 
 
