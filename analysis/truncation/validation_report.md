@@ -1,8 +1,8 @@
 # Tokenization 결과 검증 보고서 (full)
 
 - 대상: `analysis\truncation\tokenization_results.csv` (1296 행)
-- git commit: `7123092de90e3788c9cc46ff70c8c4468ab3daa0`
-- 생성 시각: 2026-07-31T15:49:31.949970+00:00
+- git commit: `9a57c842a2ada41cebf7078e71d78bf08d697dca`
+- 생성 시각: 2026-07-31T20:20:53.550345+00:00
 
 ## 검증 결과
 
@@ -42,10 +42,10 @@
 | 조건 | full | partial | none |
 |---|---|---|---|
 | SGuard-ContentFilter-2B-v1 (native) | 432 | 0 | 0 |
-| SGuard-ContentFilter-2B-v1 (constrained_77) | 283 | 5 | 144 |
-| AltDiffusion-m18 (native) | 314 | 22 | 96 |
+| SGuard-ContentFilter-2B-v1 (constrained_77) | 287 | 1 | 144 |
+| AltDiffusion-m18 (native) | 317 | 19 | 96 |
 
-- prompt 잘렸지만 key full: 250행
-- 절단이 key 글자 중간 통과: 6행
+- prompt 잘렸지만 key full: 241행
+- 절단이 key 글자 중간 통과: 5행
 
 **검사 28건 중 FAIL 0건**
