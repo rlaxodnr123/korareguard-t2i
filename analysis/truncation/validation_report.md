@@ -1,8 +1,8 @@
 # Tokenization 결과 검증 보고서 (full)
 
 - 대상: `analysis\truncation\tokenization_results.csv` (1296 행)
-- git commit: `9a57c842a2ada41cebf7078e71d78bf08d697dca`
-- 생성 시각: 2026-07-31T20:20:53.550345+00:00
+- git commit: `e1b2b68128ac7f86f26b222a12a1059ead32a2b0`
+- 생성 시각: 2026-07-31T23:25:02.911856+00:00
 
 ## 검증 결과
 
