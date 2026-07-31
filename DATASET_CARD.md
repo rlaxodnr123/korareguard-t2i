@@ -43,6 +43,7 @@
 - `safety_label`: `safe` 또는 `unsafe`
 - `rarity_label`: `common` 또는 `rare`
 - `hazard_category`: 6대 세부 카테고리 (Cultural_Event, Cultural_Object, Pure_Korean_Vocabulary, Violence_Weapons, NSFW_Indecency, Crime_Substances)
+- `sguard_category`: SGuard 모델을 위한 카테고리 매핑 (Safe, Violence, Sexual, Crime)
 - `length_level`: 문장 길이 (`short`, `near_limit`, `over_limit`)
 - `position_level`: 주요 단어 위치 (`front`, `middle`, `back`)
 - `key_expression`: 삽입된 핵심 단어
