@@ -80,8 +80,11 @@ def b(v: str) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", action="store_true")
+    ap.add_argument("--variant", default="",
+                    help="벤치마크 변형 접미사. analyze_tokens.py --prompts 로 만든 "
+                         "tokenization_results<variant>.csv 를 검증한다. 예: _77")
     args = ap.parse_args()
-    suffix = "" if args.full else "_pilot"
+    suffix = args.variant + ("" if args.full else "_pilot")
 
     csv_path = OUT_DIR / f"tokenization_results{suffix}.csv"
     meta_path = OUT_DIR / f"run_metadata{suffix}.json"

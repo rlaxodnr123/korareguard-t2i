@@ -230,10 +230,23 @@ def main() -> int:
                     help="432 전체 분석 (기본은 pilot concept 만)")
     ap.add_argument("--overwrite", action="store_true",
                     help="기존 결과 파일을 덮어쓴다")
+    ap.add_argument("--prompts", default=None,
+                    help="입력 prompts CSV. 기본은 benchmarks/prompts/prompts.csv. "
+                         "벤치마크 변형(prompts_77.csv 등)을 비교할 때 쓴다.")
     args = ap.parse_args()
 
+    prompts_path = Path(args.prompts) if args.prompts else PROMPTS_CSV
+    if not prompts_path.is_absolute():
+        prompts_path = (REPO / prompts_path).resolve()
+    if not prompts_path.exists():
+        log.error("입력 파일이 없습니다: %s", prompts_path)
+        return 1
+    # 변형 파일은 출력 이름에 표시해 기본 결과를 덮어쓰지 않게 한다.
+    #   prompts.csv -> ""   prompts_77.csv -> "_77"   prompts_127.csv -> "_127"
+    variant = prompts_path.stem.replace("prompts", "")
+
     mode = "full" if args.full else "pilot"
-    suffix = "" if args.full else "_pilot"
+    suffix = variant + ("" if args.full else "_pilot")
     out_csv = OUT_DIR / f"tokenization_results{suffix}.csv"
     out_meta = OUT_DIR / f"run_metadata{suffix}.json"
 
@@ -241,7 +254,7 @@ def main() -> int:
         log.error("이미 존재합니다: %s  (덮어쓰려면 --overwrite)", out_csv)
         return 1
 
-    with open(PROMPTS_CSV, encoding="utf-8-sig", newline="") as f:
+    with open(prompts_path, encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
     if mode == "pilot":
         rows = [r for r in rows if r["concept_id"] in PILOT_CONCEPTS]
@@ -363,7 +376,7 @@ def main() -> int:
             "platform": platform.platform(),
             "transformers": transformers.__version__,
         },
-        "inputs": {"prompts_csv": str(PROMPTS_CSV.relative_to(REPO)).replace("\\", "/")},
+        "inputs": {"prompts_csv": str(prompts_path.relative_to(REPO)).replace("\\", "/")},
     }
     for m in ("tokenizers", "sentencepiece", "pandas", "numpy", "torch", "diffusers"):
         try:
