@@ -51,8 +51,10 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger("analyze_tokens")
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "tokenizer"))
 from key_span import InputPolicy, analyze_key_span, KeySpanResult, STATUS_OK  # noqa: E402
+from src.common import schema  # noqa: E402  — 컬럼명/값 어휘의 팀 공용 SSOT
 
 # ---------------------------------------------------------------------------
 # 설정 — 값은 여기 한 곳에만 둔다. 나중에 src/common/config.py 로 옮긴다.
@@ -104,6 +106,7 @@ FIELDNAMES = [
     "key_tokens_per_character",
     # PASS 2 — actual used input
     "total_tokens_used", "prompt_truncated",
+    "key_start_token", "key_end_token",
     "key_tokens_retained", "key_retention_ratio", "key_visibility",
     "key_chars_retained", "key_chars_covered", "key_chars_uncovered",
     "key_retention_ratio_char",
@@ -175,7 +178,7 @@ def build_conditions(sg_tok: Any, ad_tok: Any) -> list[dict[str, Any]]:
             "label": "SGuard native",
             "tokenizer": sg_tok,
             "policy": InputPolicy(
-                name="native", model_id=SGUARD_MODEL_ID, model_role="safety",
+                name="native", model_id=SGUARD_MODEL_ID, model_role=schema.ROLE_TEXT_SAFETY,
                 add_special_tokens=False, cap=None, cap_kind="none",
                 declared_max_length=SGUARD_NATIVE_CONTEXT, special_tokens_reserved=0),
             "max_length_effective": SGUARD_NATIVE_CONTEXT,
@@ -187,7 +190,7 @@ def build_conditions(sg_tok: Any, ad_tok: Any) -> list[dict[str, Any]]:
             "tokenizer": sg_tok,
             "policy": InputPolicy(
                 name=f"constrained_{EXPERIMENTAL_TOKEN_CAP}", model_id=SGUARD_MODEL_ID,
-                model_role="safety", add_special_tokens=False,
+                model_role=schema.ROLE_TEXT_SAFETY, add_special_tokens=False,
                 cap=EXPERIMENTAL_TOKEN_CAP, cap_kind="user_content",
                 declared_max_length=SGUARD_NATIVE_CONTEXT, special_tokens_reserved=0),
             "max_length_effective": EXPERIMENTAL_TOKEN_CAP,
@@ -198,7 +201,7 @@ def build_conditions(sg_tok: Any, ad_tok: Any) -> list[dict[str, Any]]:
             "label": "AltDiffusion native",
             "tokenizer": ad_tok,
             "policy": InputPolicy(
-                name="native", model_id=ALTDIFF_MODEL_ID, model_role="generator",
+                name="native", model_id=ALTDIFF_MODEL_ID, model_role=schema.ROLE_GENERATOR,
                 add_special_tokens=False, cap=ad_content_budget, cap_kind="native",
                 declared_max_length=ad_declared,
                 special_tokens_reserved=ad_n_special),

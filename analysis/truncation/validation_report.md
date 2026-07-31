@@ -1,8 +1,8 @@
 # Tokenization 결과 검증 보고서 (full)
 
 - 대상: `analysis\truncation\tokenization_results.csv` (1296 행)
-- git commit: `a17bd28a7f1c6e90a1629ec3c893c1e487e90397`
-- 생성 시각: 2026-07-30T16:24:26.804972+00:00
+- git commit: `7123092de90e3788c9cc46ff70c8c4468ab3daa0`
+- 생성 시각: 2026-07-31T15:49:31.949970+00:00
 
 ## 검증 결과
 
@@ -17,6 +17,9 @@
 | key_visibility 값 어휘 유효 | PASS | ['full', 'none', 'partial'] |
 | analysis_status 값 어휘 유효 | PASS | ['ok'] |
 | analysis_status = error 행 없음 | PASS | 0건 |
+| model_role 이 schema 값 어휘와 일치 | PASS | ['generator', 'text_safety'] vs schema ['generator', 'text_safety'] |
+| input_policy 가 schema.ALL_POLICIES 안에 있음 | PASS | ['constrained_77', 'native'] vs schema ['native', 'constrained_77', 'constrained_127'] |
+| key_visibility 가 schema.ALL_VISIBILITY 안에 있음 | PASS |  |
 | concept x rarity x length x position 각 셀 정확히 1개 | PASS | 432 셀 |
 | rarity_label 균형 | PASS | {'common': 216, 'rare': 216} |
 | length_level 균형 | PASS | {'short': 144, 'near_limit': 144, 'over_limit': 144} |
@@ -45,4 +48,4 @@
 - prompt 잘렸지만 key full: 250행
 - 절단이 key 글자 중간 통과: 6행
 
-**검사 25건 중 FAIL 0건**
+**검사 28건 중 FAIL 0건**

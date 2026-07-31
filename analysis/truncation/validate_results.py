@@ -36,6 +36,9 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+from src.common import schema  # noqa: E402  — 팀 공용 값 어휘와 대조하기 위해
+
 OUT_DIR = REPO / "analysis" / "truncation"
 
 VALID_SAFETY = {"safe", "unsafe"}
@@ -126,6 +129,19 @@ def main() -> int:
 
     n_err = sum(1 for r in rows if r["analysis_status"] != "ok")
     R.check("analysis_status = error 행 없음", n_err == 0, f"{n_err}건")
+
+    # 팀 공용 SSOT 와 값 어휘가 일치하는지. 여기가 어긋나면 통합 join 이
+    # 에러 없이 0건이 된다 (model_role 을 'safety' 로 쓰다 겪은 문제).
+    seen_role = {r["model_role"] for r in rows}
+    valid_role = {schema.ROLE_TEXT_SAFETY, schema.ROLE_GENERATOR}
+    R.check("model_role 이 schema 값 어휘와 일치", seen_role <= valid_role,
+            f"{sorted(seen_role)} vs schema {sorted(valid_role)}")
+    seen_pol = {r["input_policy"] for r in rows}
+    R.check("input_policy 가 schema.ALL_POLICIES 안에 있음",
+            seen_pol <= set(schema.ALL_POLICIES),
+            f"{sorted(seen_pol)} vs schema {list(schema.ALL_POLICIES)}")
+    R.check("key_visibility 가 schema.ALL_VISIBILITY 안에 있음",
+            {r["key_visibility"] for r in rows} <= set(schema.ALL_VISIBILITY))
 
     # 요인 균형 — 프롬프트 단위로 본다 (조건마다 중복되므로)
     prompts = {r["prompt_id"]: r for r in rows}

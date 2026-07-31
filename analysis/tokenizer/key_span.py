@@ -23,16 +23,26 @@ byte-level BPE(SGuard) 주의:
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field, asdict
+from pathlib import Path
 from typing import Any, Optional
 
-# key_visibility 값 어휘 — 팀 공통. 다른 이름과 혼용하지 않는다.
-VISIBILITY_FULL = "full"
-VISIBILITY_PARTIAL = "partial"
-VISIBILITY_NONE = "none"
+# 값 어휘는 팀 공용 SSOT(src/common/schema.py)에서 가져온다.
+# 여기에 리터럴을 다시 적으면 두 곳이 조용히 어긋난다.
+# (실제로 model_role 을 'safety' 로 쓰다가 schema 의 'text_safety' 와 어긋나
+#  통합 join 이 0건이 되는 문제가 있었다)
+_REPO = Path(__file__).resolve().parents[2]
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+from src.common import schema  # noqa: E402
 
-STATUS_OK = "ok"
-STATUS_ERROR = "error"
+VISIBILITY_FULL = schema.VISIBILITY_FULL
+VISIBILITY_PARTIAL = schema.VISIBILITY_PARTIAL
+VISIBILITY_NONE = schema.VISIBILITY_NONE
+
+STATUS_OK = schema.STATUS_OK
+STATUS_ERROR = schema.STATUS_ERROR
 
 
 @dataclass(frozen=True)
@@ -102,6 +112,11 @@ class KeySpanResult:
     # PASS 2 — actual used input
     total_tokens_used: int = 0
     prompt_truncated: bool = False
+    # 실제 사용된 토큰열에서 살아남은 key span. 전부 잘렸으면 -1.
+    # (pretrunc span 과 다르다. 앞에서부터 자르므로 index 자체는 같지만
+    #  '남은 것' 만 담는다는 점이 다르다)
+    key_start_token: int = -1
+    key_end_token: int = -1
     key_tokens_retained: int = 0
     key_retention_ratio: float = 0.0
     key_chars_retained: int = 0
@@ -233,6 +248,9 @@ def analyze_key_span(
     retained_idx = [i for i in key_idx if i < cutoff]
     res.key_tokens_retained = len(retained_idx)
     res.key_retention_ratio = len(retained_idx) / len(key_idx)
+    if retained_idx:
+        res.key_start_token = retained_idx[0]
+        res.key_end_token = retained_idx[-1]
 
     # 글자 단위 retention: 그 글자를 덮는 토큰이 전부 남아야 인정한다.
     # (byte-level BPE 에서 한 글자가 여러 토큰으로 쪼개지는 경우 대비)

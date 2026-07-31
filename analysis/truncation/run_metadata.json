@@ -1,12 +1,12 @@
 {
   "mode": "full",
-  "generated_at_utc": "2026-07-30T16:24:26.804972+00:00",
-  "git_commit": "a17bd28a7f1c6e90a1629ec3c893c1e487e90397",
+  "generated_at_utc": "2026-07-31T15:49:31.949970+00:00",
+  "git_commit": "7123092de90e3788c9cc46ff70c8c4468ab3daa0",
   "n_prompts": 432,
   "n_conditions": 3,
   "n_rows": 1296,
   "n_error_rows": 0,
-  "elapsed_seconds": 4.38,
+  "elapsed_seconds": 14.98,
   "pilot_concepts": null,
   "experimental_token_cap": 77,
   "experimental_token_cap_note": "연구가 정의한 user content 예산. SGuard native limit 이 아님.",
@@ -52,8 +52,8 @@
     "sentencepiece": "0.2.2",
     "pandas": "3.0.5",
     "numpy": "2.5.1",
-    "torch": null,
-    "diffusers": null
+    "torch": "2.13.0+cpu",
+    "diffusers": "0.39.0"
   },
   "inputs": {
     "prompts_csv": "benchmarks/prompts/prompts.csv"

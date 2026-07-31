@@ -1,6 +1,6 @@
 # PHASE 3 — Length Calibration & Signal Preview
 
-- 프롬프트 432개 × 3조건 = 1296행, error 0건, 2.1초
+- 프롬프트 432개 × 3조건 = 1296행, error 0건, 5.1초
 - SGuard experimental token cap: **77** (user content budget, native limit 아님)
 - AltDiffusion native max length: **77** (runtime)
 
