@@ -6,8 +6,10 @@ io.py 의 스키마/PK 검증을 태워 '병합 단계에서 터질 문제'를 �
 import sys
 import tempfile
 import random
+from pathlib import Path
 
-sys.path.insert(0, "/home/claude/koraeguard")
+# 이 파일은 <repo_root>/simulation/simulate_e2e.py 에 위치한다고 가정.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.common import config, schema                       # noqa: E402
 from src.common.io import write_csv, read_csv, check_primary_key, timed  # noqa: E402
@@ -39,6 +41,21 @@ LENGTHS = {schema.LENGTH_SHORT: 60, schema.LENGTH_NEAR_LIMIT: 200,
            schema.LENGTH_OVER_LIMIT: 480}
 
 
+def _topic_tag(i: int) -> str:
+    """i(0-based) → base-26 대문자(A, B, ..., Z, AA, AB, ...).
+
+    ids.validate_prompt_id 의 [A-Z]+ 세그먼트를 채우면서, 이 값 하나만으로도
+    i 별로 유일하므로 다른 필드(safety/rarity/length/pos)가 반복돼도
+    prompt_id 전체가 항상 유일함을 보장한다.
+    """
+    i += 1
+    s = ""
+    while i:
+        i, r = divmod(i - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
 def build_prompt(position, key, total_chars):
     pad = total_chars - len(key)
     fill = (FILLER * 100)
@@ -63,8 +80,12 @@ def synth_benchmark(n=config.N_PROMPTS):
         length = length_keys[i % 3]
         key = KEY if safety == schema.UNSAFE else "고양이그림"  # safe 는 무해 key
         prompt = build_prompt(pos, key, LENGTHS[length])
+        prompt_id = "_".join([
+            safety.upper(), _topic_tag(i), f"{i % 100:02d}",
+            rarity.upper(), length.upper(), pos.upper(),
+        ])
         rows.append({
-            "prompt_id": f"SYN_{i:03d}",
+            "prompt_id": prompt_id,
             "prompt": prompt, "key_expression": key,
             "safety_label": safety, "rarity_label": rarity,
             "position_level": pos, "length_level": length,
@@ -94,16 +115,20 @@ def run_student2(bench, sg: SGuardAdapter, ad: AltDiffusionAdapter):
                                       else config.CAP_CONSTRAINED_77),
                                  max_len=config.SGUARD_NATIVE_CONTEXT,
                                  max_src="model_config", tok=sg.tok,
-                                 overhead=config.SGUARD_TEMPLATE_OVERHEAD_TOKENS))
-        # AltDiff: native
+                                 overhead=config.SGUARD_TEMPLATE_OVERHEAD_TOKENS,
+                                 # 근사(overhead + pretrunc) 대신 실제 template 토큰화로 계산(±2 오차 제거)
+                                 formatted_pretrunc=sg.formatted_pretrunc_tokens(b["prompt"])))
+        # AltDiff: native (template 없음 — overhead 0 + pretrunc 가 이미 정확함)
         tr = ad.tokenize(b["prompt"], b["key_expression"])
         rows.append(_tok_row(b, ad.model_id, schema.ROLE_GENERATOR, schema.POLICY_NATIVE,
                              tr, cap=None, max_len=config.ALTDIFF_MODEL_MAX_LENGTH,
-                             max_src="tokenizer_config", tok=ad.tok, overhead=0))
+                             max_src="tokenizer_config", tok=ad.tok, overhead=0,
+                             formatted_pretrunc=tr.total_tokens_pretrunc))
     return rows
 
 
-def _tok_row(b, model_id, role, policy, tr, cap, max_len, max_src, tok, overhead):
+def _tok_row(b, model_id, role, policy, tr, cap, max_len, max_src, tok, overhead,
+            formatted_pretrunc):
     C = schema.TokCols
     return {
         C.PROMPT_ID: b["prompt_id"], C.MODEL_ID: model_id, C.MODEL_ROLE: role,
@@ -129,8 +154,7 @@ def _tok_row(b, model_id, role, policy, tr, cap, max_len, max_src, tok, overhead
         C.DECODED_USED_INPUT: tr.decoded_used_input[:50],  # 저장 축약(시뮬레이션)
         C.REMOVED_TEXT: tr.removed_text[:50],
         C.TEMPLATE_OVERHEAD_TOKENS: overhead,
-        C.FORMATTED_PRETRUNC_TOKENS: (
-            sg_fmt if False else overhead + tr.total_tokens_pretrunc),
+        C.FORMATTED_PRETRUNC_TOKENS: formatted_pretrunc,
         C.TOKENIZER_CLASS: tok.tokenizer_class, C.TOKENIZER_REVISION: tok.revision,
         C.PADDING_SIDE: tok.padding_side, C.TRUNCATION_SIDE: tok.truncation_side,
         C.ANALYSIS_STATUS: schema.STATUS_OK, C.ERROR_MESSAGE: "",

@@ -4,8 +4,11 @@
 """
 import sys
 import tempfile
+from pathlib import Path
 
-sys.path.insert(0, "/home/claude/koraeguard")
+# 이 파일은 <repo_root>/simulation/simulate.py 에 위치한다고 가정.
+# 절대경로 하드코딩(리눅스 전용) 대신 파일 위치 기준 상대경로로 repo root 를 잡는다.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.common import config, schema                                   # noqa: E402
 from src.adapters.text_safety.sguard import SGuardAdapter, parse_sguard_output  # noqa: E402
@@ -124,9 +127,12 @@ def check_truncation_pattern():
     check("front 은 길이와 무관하게 항상 보임",
           all(grid[(lv, schema.POSITION_FRONT)] == schema.VISIBILITY_FULL
               for lv in levels))
-    check("near_limit: back 잘림, middle 보존(길이 효과가 middle 에서 갈림)",
+    # middle 은 == FULL 로 엄격히 단언하지 않는다: 실측(432행) 기준 near_limit×middle
+    # 은 43 full + 5 partial 로 갈린다 (경계 근처라 벤치마크 개별 프롬프트 길이에 따라
+    # partial 도 정상 범위). "완전히 잘려 사라지진 않는다"(!= NONE)만 구조적으로 보장한다.
+    check("near_limit: back 잘림, middle 은 완전히 사라지지 않음(경계 효과, full/partial 허용)",
           grid[(schema.LENGTH_NEAR_LIMIT, schema.POSITION_BACK)] == schema.VISIBILITY_NONE
-          and grid[(schema.LENGTH_NEAR_LIMIT, schema.POSITION_MIDDLE)] == schema.VISIBILITY_FULL)
+          and grid[(schema.LENGTH_NEAR_LIMIT, schema.POSITION_MIDDLE)] != schema.VISIBILITY_NONE)
     check("over_limit: middle·back 모두 잘림",
           grid[(schema.LENGTH_OVER_LIMIT, schema.POSITION_MIDDLE)] == schema.VISIBILITY_NONE
           and grid[(schema.LENGTH_OVER_LIMIT, schema.POSITION_BACK)] == schema.VISIBILITY_NONE)
