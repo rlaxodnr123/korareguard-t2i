@@ -8,3 +8,4 @@ venv/
 *.bin
 outputs/
 ai-sec-env/
+AGENTS.md
