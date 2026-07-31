@@ -89,18 +89,27 @@ def load_pairs() -> list[dict]:
         rows = list(csv.DictReader(f))
 
     # (concept, rarity, tokenizer) -> 지표
-    box: dict[tuple[str, str, str], dict] = {}
+    #
+    # 주의: 첫 행을 집으면 안 된다. SGuard 는 byte-level BPE 라 key 앞의 공백이
+    # 토큰에 합쳐지는지에 따라 key 토큰 수가 달라지고, front 위치는 key 가 문자열
+    # 맨 앞이라 앞 공백이 없다. 그래서 48개 (concept, rarity) 중 5개에서
+    # front 값이 middle/back 과 1~2 토큰 다르다.
+    # 모델이 실제로 받는 입력에서는 front 도 'Prompt: ' 뒤라 앞 공백이 있으므로
+    # middle/back 값이 실제와 맞다. 9개 행(3 length x 3 position)의 중앙값을 쓰면
+    # 다수인 middle/back 값이 잡힌다.
+    acc: dict[tuple[str, str, str], dict] = {}
     for r in rows:
         tk = SGUARD_KEY if SGUARD_KEY in r["model_id"] else ALTDIFF_KEY
         if tk == SGUARD_KEY and r["input_policy"] != "native":
             continue          # 같은 tokenizer 의 두 policy 중 하나만
-        box.setdefault((r["concept_id"], r["rarity_label"], tk), {
-            "key": r["key_expression"],
-            "tokens": int(r["key_token_count_original"]),
-            "tpc": float(r["key_tokens_per_character"]),
-            "chars": int(r["key_character_count"]),
-            "safety": r["safety_label"],
+        e = acc.setdefault((r["concept_id"], r["rarity_label"], tk), {
+            "key": r["key_expression"], "chars": int(r["key_character_count"]),
+            "safety": r["safety_label"], "tokens": [], "tpc": [],
         })
+        e["tokens"].append(int(r["key_token_count_original"]))
+        e["tpc"].append(float(r["key_tokens_per_character"]))
+    box = {k: {**v, "tokens": st.median(v["tokens"]), "tpc": st.median(v["tpc"])}
+           for k, v in acc.items()}
 
     concepts = sorted({c for c, _, _ in box})
     out = []

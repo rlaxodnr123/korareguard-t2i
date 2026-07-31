@@ -94,7 +94,7 @@ measures.
 **A raw token count answers the wrong question.** Comparing rare and common
 expressions by absolute token count, rare expressions use *fewer* tokens: the
 paired median difference (rare − common, over 24 concept pairs) is −3.50 for
-SGuard and −2.50 for AltDiffusion, with rare exceeding common in only 4/24 and
+SGuard and −2.50 for AltDiffusion, with rare exceeding common in only 3/24 and
 7/24 pairs respectively.
 
 This reflects a length asymmetry in the benchmark rather than a property of
@@ -104,19 +104,20 @@ characters; the common form is longer in 19 of 24 concepts.
 
 **Normalizing by character count reverses the direction.** Measured as tokens per
 character, rare expressions are more finely segmented in **19/24** concept pairs
-for SGuard (median difference +0.221) and **21/24** for AltDiffusion (median
+for SGuard (median difference +0.217) and **21/24** for AltDiffusion (median
 +0.271). In absolute terms, SGuard segments rare expressions at 1.22 tokens per
 character versus 1.00 for common; AltDiffusion at 0.90 versus 0.68.
 
 The effect appears independently in both tokenizers, which have different
 vocabularies (49,152 vs. 250,002) and different segmentation algorithms
-(byte-level BPE vs. SentencePiece). It is also unaffected by the surrounding
-filler text: the median difference is identical when computed separately for
-front, middle, and back key positions.
+(byte-level BPE vs. SentencePiece).
 
-Five concept pairs show the opposite direction. Three of these were flagged
-during our semantic-pair audit as not constituting genuine rare/common variants
-of the same referent and were revised before the final run.
+Four concept pairs run in the opposite direction for SGuard and three for
+AltDiffusion; `UNSAFE_VIOL_14` is the only pair contrary in both. Because
+segmentation of an expression is not entirely context-independent under a
+byte-level BPE, we report the median across all nine realizations of each
+expression (three lengths × three positions) rather than a single occurrence;
+the sensitivity this controls for is quantified in X.8.
 
 *(Figure A: paired comparison of raw token counts and tokens-per-character.)*
 
@@ -328,6 +329,19 @@ rarity and position. This was corrected before the reported run; in the final
 benchmark filler is constant within each concept × length group (0/216 rarity
 pairs and 0/144 position triples differ).
 
+**Segmentation of an expression is not fully context-independent.** Under a
+byte-level BPE, whether the space preceding an expression merges into its first
+token changes the token count. In the front position the key begins the prompt
+string and has no preceding space, so its isolated segmentation differs from the
+middle and back positions by one to two tokens in 5 of 48 (concept, rarity)
+combinations for SGuard; AltDiffusion's SentencePiece shows no such variation
+(0/48). Reporting a single occurrence would make the paired statistic depend on
+which position happened to be selected — for SGuard, the front-only figures are
++0.221 and 4/24 against +0.217 and 3/24 for the other two positions. We therefore
+report the median across all nine realizations. Note that in the deployed input
+the front position is also preceded by a space (from the template's `"Prompt: "`
+marker), so the majority value is the one that matches what the model receives.
+
 **Measurement basis for position metrics.** *(pending)* Our span metrics are
 currently computed on the prompt tokenized in isolation, whereas the model
 receives it embedded in the chat template. The trailing space of the template's
@@ -342,7 +356,6 @@ resolved by computing spans from the in-template encoding.
 
 | Section | Requires |
 |---|---|
-| 
 | RQ-T9 — association with safety outcomes (Figure G) | `safety_results.csv` |
 | H6 — association with generation outcomes (Figure F) | `generation_results.csv`, `image_labels.csv` |
 | Root-cause case analysis | both of the above |
