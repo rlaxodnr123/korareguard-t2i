@@ -33,7 +33,8 @@ def write_csv(path: str, rows: list[dict], expected_columns: list[str]) -> None:
     _check_columns(rows, expected_columns, where=path)
     tmp = path + ".tmp"
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(tmp, "w", newline="", encoding="utf-8") as f:
+    # utf-8-sig: prompts.csv 와 동일 인코딩으로 통일 (BOM 없으면 엑셀에서 한글 깨짐).
+    with open(tmp, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=expected_columns)
         writer.writeheader()
         writer.writerows(rows)
@@ -41,7 +42,8 @@ def write_csv(path: str, rows: list[dict], expected_columns: list[str]) -> None:
 
 
 def read_csv(path: str, expected_columns: list[str] | None = None) -> list[dict]:
-    with open(path, newline="", encoding="utf-8") as f:
+    # utf-8-sig: BOM 이 있으면 벗기고, 없어도(plain utf-8) 그대로 읽는다.
+    with open(path, newline="", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     if expected_columns is not None:
         _check_columns(rows, expected_columns, where=path)

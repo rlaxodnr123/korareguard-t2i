@@ -9,11 +9,27 @@
 4. 출력은 고정 5줄 (Crime/Manipulation/Privacy/Sexual/Violence) 이며 단일 카테고리가 아니다.
    safe = 5개 전부 safe.
 """
+from dataclasses import dataclass
 from typing import Protocol
 
 from ...common import config, schema
 from ..token_analysis import TokenizationResult, analyze_content_tokens
 from .base import PreparedInput, SafetyResult, TextSafetyAdapter
+
+
+@dataclass
+class ChatTemplateEncoding:
+    """prompt_text(미절단) 전체를 template 에 넣어 '한 번만' 토큰화한 결과.
+
+    decode 를 거치지 않고 offset 으로 prefix/content/suffix 경계를 나눈 것이므로,
+    U+FFFD 손상이나 'Prompt: ' 뒤 공백 병합 같은 경계 토큰화 동작 유실이 없다 (#3).
+    content_offsets 는 content_ids 와 길이가 같고, prompt(원문 content_text) 기준
+    char offset 이다 — token_analysis.analyze_content_tokens 에 그대로 넘길 수 있다.
+    """
+    prefix_ids: list[int]
+    content_ids: list[int]
+    content_offsets: list[tuple[int, int]]
+    suffix_ids: list[int]
 
 
 class SGuardTokenizerBackend(Protocol):
@@ -28,17 +44,26 @@ class SGuardTokenizerBackend(Protocol):
         ...
     def decode(self, ids: list[int]) -> str: ...
     def apply_chat_template(self, prompt_text: str, response_text: str) -> str:
-        """키는 반드시 config.SGUARD_MESSAGE_KEY_PROMPT / _RESPONSE."""
+        """키는 반드시 config.SGUARD_MESSAGE_KEY_PROMPT / _RESPONSE.
+        formatted_pretrunc_tokens() 처럼 '전체(미절단) 프롬프트'의 길이만 셀 때 쓴다.
+        절단된/디코드된 문자열을 다시 이걸로 감싸 모델 입력을 만들지 않는다 (#3)."""
+        ...
+    def encode_chat_template(self, prompt_text: str, response_text: str) -> ChatTemplateEncoding:
+        """prompt_text(미절단) 전체를 template 에 넣어 한 번만 토큰화하고
+        prefix/content/suffix 로 분리해 반환한다. 실제 모델 입력(input_ids)은
+        이 결과의 prefix_ids + content_ids[:budget] + suffix_ids 로 조립한다."""
         ...
     def count_tokens(self, formatted_text: str) -> int: ...
 
 
 class SGuardModelBackend(Protocol):
-    def generate(self, formatted_text: str) -> str:
-        """고정 5줄 raw output 반환."""
+    def generate(self, input_ids: list[int]) -> str:
+        """고정 5줄 raw output 반환. formatted_text 문자열이 아니라 조립된
+        input_ids 를 직접 받는다 — 문자열 재-토큰화로 인한 불일치를 원천 차단 (#3)."""
         ...
-    def label_logits(self, formatted_text: str) -> dict[str, float] | None:
-        """카테고리별 unsafe 라벨 토큰 logit. 미구현 시 None (unsafe_score 산출: 김태욱)."""
+    def label_logits(self, input_ids: list[int]) -> dict[str, float] | None:
+        """카테고리별 unsafe 라벨 토큰의 p_unsafe (safe/unsafe 두 후보만 softmax 정규화).
+        미구현 시 None (unsafe_score 산출 방법: #5)."""
         ...
 
 
@@ -71,32 +96,38 @@ class SGuardAdapter(TextSafetyAdapter):
             raise ValueError(f"unknown input_policy: {input_policy}")
         budget = _POLICY_TO_BUDGET[input_policy]
 
-        content_ids, offsets = self.tok.encode_content(prompt)
+        # 전체(미절단) prompt 를 template 에 넣어 '한 번만' 토큰화하고 offset 으로
+        # prefix/content/suffix 를 나눈다 (#3). content_ids/offsets 는 encode_content
+        # 단독 호출이 아니라 이 template-내장 토큰화에서 나온 것이므로, 실제로
+        # 모델이 받는 input_ids 와 분석에 쓰이는 토큰이 완전히 같은 소스다.
+        enc = self.tok.encode_chat_template(prompt_text=prompt, response_text="")
         tr: TokenizationResult = analyze_content_tokens(
             prompt=prompt, key_expression=key_expression,
-            content_ids=content_ids, offsets=offsets,
+            content_ids=enc.content_ids, offsets=enc.content_offsets,
             budget=budget, decode_fn=self.tok.decode,
         )
 
-        # 절단된 content 를 template 에 넣는다. response 는 비움 (pre-generation).
-        formatted = self.tok.apply_chat_template(
-            prompt_text=tr.decoded_used_input, response_text="",
-        )
+        # decode 를 거치지 않고 token id 수준에서 이어붙인다 — U+FFFD 손상,
+        # 'Prompt: ' 뒤 공백 병합 유실 등 문자열 왕복으로 생기는 불일치를 원천 차단.
+        input_ids = enc.prefix_ids + tr.used_content_ids + enc.suffix_ids
+        formatted_tokens = len(input_ids)
         # 방어적 검증: cap 을 전체 입력에 잘못 적용했다면 formatted 가 overhead 보다
         # 짧아지는 파국이 생긴다. template 이 보존됐는지 하한으로 확인.
-        formatted_tokens = self.tok.count_tokens(formatted)
         if formatted_tokens < config.SGUARD_TEMPLATE_OVERHEAD_TOKENS:
             raise RuntimeError(
                 "formatted input 이 template overhead(1,480)보다 짧음 — "
                 "template 파괴 절단이 의심됨. tokenizer truncation 사용 여부 점검."
             )
+        # decode 는 로그/표시용으로만 쓴다 — 이 문자열을 다시 토큰화해 모델에 먹이지 않는다.
+        formatted_text = self.tok.decode(input_ids)
 
         return PreparedInput(
             input_policy=input_policy,
             experimental_token_cap=budget,
             used_content_text=tr.decoded_used_input,
             used_content_ids=tr.used_content_ids,
-            formatted_text=formatted,
+            formatted_text=formatted_text,
+            formatted_input_ids=input_ids,
             template_overhead_tokens=config.SGUARD_TEMPLATE_OVERHEAD_TOKENS,
             total_input_tokens_estimate=(
                 config.SGUARD_TEMPLATE_OVERHEAD_TOKENS + tr.total_tokens_used
@@ -120,13 +151,15 @@ class SGuardAdapter(TextSafetyAdapter):
         if self.model is None:
             raise RuntimeError("model backend 미주입 — predict 불가")
         prep = self.prepare_input(prompt, key_expression, input_policy)
-        raw = self.model.generate(prep.formatted_text)
+        raw = self.model.generate(prep.formatted_input_ids)
         categories = parse_sguard_output(raw)
         decision = (schema.UNSAFE
                     if any(v == schema.UNSAFE for v in categories.values())
                     else schema.SAFE)
-        logits = self.model.label_logits(prep.formatted_text)
-        unsafe_score = max(logits.values()) if logits else None
+        # p_unsafe (카테고리별, safe/unsafe 두 후보 softmax 정규화). 가장 위험한
+        # 카테고리 기준으로 종합 점수를 낸다 (decision 이 "하나라도 unsafe"인 것과 동일 기준).
+        unsafe_probs = self.model.label_logits(prep.formatted_input_ids)
+        unsafe_score = max(unsafe_probs.values()) if unsafe_probs else None
         return SafetyResult(
             prompt_id="",  # 호출부(run_text_safety)가 채움
             input_policy=input_policy,
@@ -195,20 +228,67 @@ def load_real_sguard_adapter(device: str = "cuda") -> SGuardAdapter:
             return hf_tok.apply_chat_template(msgs, tokenize=False,
                                               add_generation_prompt=True)
 
+        def encode_chat_template(self, prompt_text, response_text):
+            formatted = self.apply_chat_template(prompt_text, response_text)
+            content_start = formatted.find(prompt_text)
+            if content_start < 0:
+                raise RuntimeError(
+                    "prompt_text 가 formatted template 안에서 발견되지 않음 — "
+                    "apply_chat_template 이 content 를 변형함(escape 등). 가정 위반."
+                )
+            content_end = content_start + len(prompt_text)
+            enc = hf_tok(formatted, add_special_tokens=False, return_offsets_mapping=True)
+            ids = list(enc["input_ids"])
+            offsets = [tuple(o) for o in enc["offset_mapping"]]
+            prefix_ids, content_ids, content_offsets, suffix_ids = [], [], [], []
+            for tid, (s, e) in zip(ids, offsets):
+                if e <= content_start:
+                    prefix_ids.append(tid)
+                elif s >= content_end:
+                    suffix_ids.append(tid)
+                else:
+                    # 경계 토큰(template 문자와 content 문자가 한 토큰으로 병합된 경우)도
+                    # 보수적으로 content 로 취급 — _key_token_indices 와 동일한 원칙.
+                    content_ids.append(tid)
+                    content_offsets.append((s - content_start, e - content_start))
+            return ChatTemplateEncoding(prefix_ids=prefix_ids, content_ids=content_ids,
+                                        content_offsets=content_offsets, suffix_ids=suffix_ids)
+
         def count_tokens(self, formatted_text):
             return len(hf_tok(formatted_text, add_special_tokens=False)["input_ids"])
 
     class _RealModel:
-        def generate(self, formatted_text):
+        def generate(self, input_ids):
             import torch
-            inputs = hf_tok(formatted_text, return_tensors="pt",
-                            add_special_tokens=False).to(device)
+            ids_t = torch.tensor([input_ids], device=device)
+            attn_t = torch.ones_like(ids_t)
             with torch.no_grad():
-                out = hf_model.generate(**inputs, max_new_tokens=32, do_sample=False)
-            return hf_tok.decode(out[0, inputs["input_ids"].shape[1]:],
-                                 skip_special_tokens=True)
+                out = hf_model.generate(input_ids=ids_t, attention_mask=attn_t,
+                                        max_new_tokens=6, do_sample=False)
+            return hf_tok.decode(out[0, ids_t.shape[1]:], skip_special_tokens=True)
 
-        def label_logits(self, formatted_text):
-            return None  # unsafe_score 산출 방법: 김태욱 확정 후 구현 (#6)
+        def label_logits(self, input_ids):
+            # 5줄 출력 = 정확히 5토큰, 한 줄=한 토큰, 순서 고정(#5).
+            # 스텝 k 의 safe/unsafe 두 후보 logit만 놓고 softmax 정규화한다
+            # (전체 vocab softmax 아님) → p_unsafe.
+            import torch
+            ids_t = torch.tensor([input_ids], device=device)
+            attn_t = torch.ones_like(ids_t)
+            with torch.no_grad():
+                out = hf_model.generate(input_ids=ids_t, attention_mask=attn_t,
+                                        max_new_tokens=6, do_sample=False,
+                                        output_scores=True, return_dict_in_generate=True)
+            scores = out.scores  # tuple, 스텝별 [1, vocab] logits
+            result = {}
+            for step, category in enumerate(config.SGUARD_CATEGORIES):
+                if step >= len(scores):
+                    break  # 생성이 짧게 끝났으면(=포맷 이상) 그 이후 카테고리는 비움
+                token_ids = config.SGUARD_LABEL_TOKEN_IDS[category]
+                step_logits = scores[step][0]
+                two = torch.stack([step_logits[token_ids["safe"]],
+                                   step_logits[token_ids["unsafe"]]])
+                probs = torch.softmax(two, dim=0)
+                result[category] = probs[1].item()
+            return result or None
 
     return SGuardAdapter(_RealTok(), _RealModel())

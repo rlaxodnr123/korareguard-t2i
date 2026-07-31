@@ -1,18 +1,25 @@
 """prompt_id / generation_id 규칙.
 
 - prompt_id     : prompts.csv 에서 부여된 그대로 사용 (freeze 이후 불변).
-                  형식 예: "VIOL_14", "CRIM_22" — 검증만 하고 재생성하지 않는다.
+                  형식 예: "SAFE_CULT_01_COMMON_SHORT_FRONT",
+                  "UNSAFE_VIOL_13_RARE_NEAR_LIMIT_BACK" — 검증만 하고 재생성하지 않는다.
 - generation_id : prompt_id × generator_id × seed 의 결정적 조합.
                   학생 3 의 generation_results.csv 와 image_labels.csv 를 잇는 유일 키.
 """
 import re
 
-_PROMPT_ID_RE = re.compile(r"^[A-Z]{3,6}_\d{1,4}$")
+_PROMPT_ID_RE = re.compile(
+    r"^(SAFE|UNSAFE)_[A-Z]+_\d{2}_(COMMON|RARE)"
+    r"_(SHORT|NEAR_LIMIT|OVER_LIMIT)_(FRONT|MIDDLE|BACK)$"
+)
 
 
 def validate_prompt_id(prompt_id: str) -> str:
     if not _PROMPT_ID_RE.match(prompt_id):
-        raise ValueError(f"invalid prompt_id: {prompt_id!r} (expected e.g. 'VIOL_14')")
+        raise ValueError(
+            f"invalid prompt_id: {prompt_id!r} "
+            "(expected e.g. 'UNSAFE_VIOL_13_RARE_NEAR_LIMIT_BACK')"
+        )
     return prompt_id
 
 

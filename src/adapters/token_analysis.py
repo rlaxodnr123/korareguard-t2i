@@ -98,12 +98,12 @@ def analyze_content_tokens(
     r.key_token_count_original = len(key_idx)
     r.key_start_pretrunc = key_idx[0]
     r.key_end_pretrunc = key_idx[-1]
-    if n > 1:
-        r.key_start_ratio = key_idx[0] / (n - 1)
-        r.key_end_ratio = key_idx[-1] / (n - 1)
-        r.key_center_ratio = (r.key_start_ratio + r.key_end_ratio) / 2
-    else:
-        r.key_start_ratio = r.key_center_ratio = r.key_end_ratio = 0.0
+    # 분모 = n (총 content 토큰 수). 이전에는 n-1(0=처음, 1=끝 정규화)을 썼으나
+    # 팀 컨벤션을 key_start/n 으로 통일 (기존 분석 결과와 값을 맞추기 위한 결정).
+    # key_idx 가 비어있지 않음이 위에서 보장되므로 n>=1 이라 분모가 0이 될 수 없다.
+    r.key_start_ratio = key_idx[0] / n
+    r.key_end_ratio = key_idx[-1] / n
+    r.key_center_ratio = (r.key_start_ratio + r.key_end_ratio) / 2
     r.key_tokens_per_character = len(key_idx) / max(len(key_expression), 1)
 
     # ---------------- PASS 2: budget 적용 (앞쪽 budget 개만 사용)
