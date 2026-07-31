@@ -1,0 +1,6 @@
+# tokenization_results.csv 는 analyze_tokens.py 가 4초 만에 재생성하는 파생 산출물이다.
+# 1.3MB 이고 prompts.csv 가 바뀔 때마다 통째로 달라지므로 git 에 넣지 않는다.
+# 재현에 필요한 정보는 run_metadata.json (모델 revision / 환경 / git commit) 에 남는다.
+#
+# 팀에 결과를 공유해야 할 시점이 오면 이 규칙을 풀고 커밋 여부를 팀과 합의한다.
+*.csv

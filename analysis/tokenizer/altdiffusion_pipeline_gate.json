@@ -1,0 +1,93 @@
+{
+  "model_id": "BAAI/AltDiffusion-m18",
+  "revision": "b3c429d6aa48346ab421ea314375d4a10b9b66e9",
+  "steps": {
+    "AltDiffusionPipeline import": {
+      "ok": true,
+      "detail": "diffusers.pipelines.deprecated.alt_diffusion.pipeline_alt_diffusion"
+    },
+    "from_pretrained 로드": {
+      "ok": false,
+      "detail": "ValueError: text_encoder/alt_diffusion.py as defined in `model_index.json` does not exist in BAAI/AltDiffusion-m18 and is not a module in 'diffusers/pipelines'."
+    },
+    "컴포넌트 직접 조립": {
+      "ok": true,
+      "detail": "AltDiffusionPipeline"
+    },
+    "safety_checker OFF": {
+      "ok": true,
+      "detail": ""
+    },
+    "tokenizer.model_max_length == 77": {
+      "ok": true,
+      "detail": "77"
+    },
+    "encode_prompt 실행": {
+      "ok": true,
+      "detail": ""
+    },
+    "content token id 열 완전 일치": {
+      "ok": true,
+      "detail": "일치"
+    },
+    "이미지 생성 완료": {
+      "ok": true,
+      "detail": "(768, 768)"
+    },
+    "이미지가 단색이 아님 (pooler 경고 무해 확인)": {
+      "ok": true,
+      "detail": "std=42.92"
+    }
+  },
+  "versions": {
+    "torch": "2.13.0+cpu",
+    "diffusers": "0.39.0",
+    "transformers": "5.14.1"
+  },
+  "load_path": "manual_component_assembly",
+  "components": {
+    "pipeline_class": "AltDiffusionPipeline",
+    "tokenizer_class": "XLMRobertaTokenizer",
+    "tokenizer_model_max_length": 77,
+    "text_encoder_class": "RobertaSeriesModelWithTransformation",
+    "text_encoder_max_position_embeddings": 514,
+    "safety_checker": null,
+    "unet_class": "UNet2DConditionModel"
+  },
+  "tokenizer_calls": [
+    {
+      "kwargs": {
+        "padding": "'max_length'",
+        "max_length": "77",
+        "truncation": "True",
+        "return_tensors": "'pt'"
+      },
+      "n_tokens": null
+    },
+    {
+      "kwargs": {
+        "padding": "'longest'",
+        "return_tensors": "'pt'"
+      },
+      "n_tokens": null
+    }
+  ],
+  "content_match": {
+    "budget": 75,
+    "n_special": 2,
+    "pipeline_content_tokens": 75,
+    "mine_content_tokens": 75,
+    "identical": true
+  },
+  "generation": {
+    "prompt": "상모돌리기, 최고 화질의 디지털 아트.",
+    "steps": 20,
+    "seed": 42,
+    "size": [
+      768,
+      768
+    ],
+    "pixel_std": 42.91884231567383,
+    "path": "gate0b_altdiffusion_sample.png"
+  }
+}

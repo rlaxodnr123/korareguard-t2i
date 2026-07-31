@@ -1,0 +1,148 @@
+{
+  "model_id": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
+  "base_vocab_size": 49152,
+  "total_vocab_size": 49169,
+  "added_tokens": [
+    {
+      "id": 49152,
+      "token": "<|start_of_role|>",
+      "decoded": "<|start_of_role|>"
+    },
+    {
+      "id": 49153,
+      "token": "<|end_of_role|>",
+      "decoded": "<|end_of_role|>"
+    },
+    {
+      "id": 49154,
+      "token": "<|tool_call|>",
+      "decoded": "<|tool_call|>"
+    },
+    {
+      "id": 49155,
+      "token": "<|start_of_cite|>",
+      "decoded": "<|start_of_cite|>"
+    },
+    {
+      "id": 49156,
+      "token": "<|end_of_cite|>",
+      "decoded": "<|end_of_cite|>"
+    },
+    {
+      "id": 49157,
+      "token": "<|start_of_plugin|>",
+      "decoded": "<|start_of_plugin|>"
+    },
+    {
+      "id": 49158,
+      "token": "<|end_of_plugin|>",
+      "decoded": "<|end_of_plugin|>"
+    },
+    {
+      "id": 49159,
+      "token": "Crime: safe\n",
+      "decoded": "Crime: safe\n"
+    },
+    {
+      "id": 49160,
+      "token": "Crime: unsafe\n",
+      "decoded": "Crime: unsafe\n"
+    },
+    {
+      "id": 49161,
+      "token": "Manipulation: safe\n",
+      "decoded": "Manipulation: safe\n"
+    },
+    {
+      "id": 49162,
+      "token": "Manipulation: unsafe\n",
+      "decoded": "Manipulation: unsafe\n"
+    },
+    {
+      "id": 49163,
+      "token": "Privacy: safe\n",
+      "decoded": "Privacy: safe\n"
+    },
+    {
+      "id": 49164,
+      "token": "Privacy: unsafe\n",
+      "decoded": "Privacy: unsafe\n"
+    },
+    {
+      "id": 49165,
+      "token": "Sexual: safe\n",
+      "decoded": "Sexual: safe\n"
+    },
+    {
+      "id": 49166,
+      "token": "Sexual: unsafe\n",
+      "decoded": "Sexual: unsafe\n"
+    },
+    {
+      "id": 49167,
+      "token": "Violence: safe",
+      "decoded": "Violence: safe"
+    },
+    {
+      "id": 49168,
+      "token": "Violence: unsafe",
+      "decoded": "Violence: unsafe"
+    }
+  ],
+  "label_token_ids": {
+    "crime": {
+      "safe": 49159,
+      "unsafe": 49160
+    },
+    "manipulation": {
+      "safe": 49161,
+      "unsafe": 49162
+    },
+    "privacy": {
+      "safe": 49163,
+      "unsafe": 49164
+    },
+    "sexual": {
+      "safe": 49165,
+      "unsafe": 49166
+    },
+    "violence": {
+      "safe": 49167,
+      "unsafe": 49168
+    }
+  },
+  "missing_categories": [],
+  "output_encodings": {
+    "전부 safe": {
+      "n_tokens": 5,
+      "ids": [
+        49159,
+        49161,
+        49163,
+        49165,
+        49167
+      ]
+    },
+    "예시(Sexual unsafe)": {
+      "n_tokens": 5,
+      "ids": [
+        49159,
+        49161,
+        49163,
+        49166,
+        49167
+      ]
+    },
+    "전부 unsafe": {
+      "n_tokens": 5,
+      "ids": [
+        49160,
+        49162,
+        49164,
+        49166,
+        49168
+      ]
+    }
+  },
+  "note": "token id 는 model revision 에 종속된다. revision 변경 시 재실행할 것."
+}
