@@ -342,13 +342,19 @@ report the median across all nine realizations. Note that in the deployed input
 the front position is also preceded by a space (from the template's `"Prompt: "`
 marker), so the majority value is the one that matches what the model receives.
 
-**Measurement basis for position metrics.** *(pending)* Our span metrics are
-currently computed on the prompt tokenized in isolation, whereas the model
-receives it embedded in the chat template. The trailing space of the template's
-`"Prompt: "` marker merges into the first content token, shifting the key token
-count by one in 15 front-position rows and the sequence length in 73 rows.
-Retention, visibility and the final input ids are unaffected. This will be
-resolved by computing spans from the in-template encoding.
+**Measurement basis for position metrics.** Our span metrics are computed on the
+prompt tokenized in isolation, whereas the model receives it embedded in the chat
+template. We quantified the gap by running both implementations over all 432
+prompts × 2 conditions and comparing field by field. The trailing space of the
+template's `"Prompt: "` marker merges into the adjacent content token, shifting
+the sequence length in 67 of 432 rows, the key token count in 15 (all
+front-position), and the key start index in 52 (middle and back). **The two
+quantities every reported result rests on — `key_retention_ratio` and
+`key_visibility` — agree on all 864 comparisons**, as do the resulting visibility
+counts and the cross-component matrix. The affected metrics are the positional
+ratios and Figure A's per-character rate; for the latter we already report the
+median across nine realizations, which is unchanged. We report the isolated-string
+basis and state the deviation here rather than mixing two measurement sources.
 
 ---
 
