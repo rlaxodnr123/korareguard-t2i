@@ -35,6 +35,13 @@ class TokenizationResult:
     key_tokens_retained: int = 0
     key_retention_ratio: float = 0.0
     key_visibility: str = schema.VISIBILITY_NONE
+    # [PASS 2 — 글자 단위] byte-fallback 조각 토큰이 일부만 살아남으면 토큰은
+    # "retained"인데 글자는 하나도 온전히 복원되지 않을 수 있다 (한글 다발생, #8).
+    key_chars_retained: int = 0
+    key_chars_covered: int = 0
+    key_chars_uncovered: int = 0
+    key_retention_ratio_char: float = 0.0
+    key_split_mid_character: bool = False
     # [위치] — pretrunc content 토큰열 기준 상대 위치 (0=맨앞, 1=맨뒤)
     key_start_ratio: float = -1.0
     key_center_ratio: float = -1.0
@@ -127,4 +134,37 @@ def analyze_content_tokens(
         r.key_end_token = retained[-1]
     # 주의: prompt_truncated 와 key_visibility 는 별개다.
     # 프롬프트가 잘렸어도(back 이 아닌 key 라면) key 는 full 일 수 있다.
+
+    # ---------------- PASS 2: 글자(character) 단위 retention
+    # SentencePiece byte-fallback 은 한글 한 글자를 여러 토큰(바이트 조각)으로 쪼갤 수
+    # 있다. budget 절단이 그 조각들 사이를 지나가면, 토큰은 일부 "retained"로 잡혀도
+    # 글자는 하나도 온전히 복원되지 않는다 — 그런 조각 토큰들은 대개 같은 char offset
+    # (s, e) 를 공유하므로, "이 글자를 가리키는 토큰이 하나라도 잘렸는가"를 offset
+    # 기준으로 판정한다 (decode() 결과에 의존하지 않아 tokenizer 구현체와 무관하게 안전).
+    # char_any_retained[c] / char_any_dropped[c]: 문자 c 를 가리키는 토큰들 중
+    # (각각) 하나라도 살아남았는지 / 하나라도 잘렸는지. 온전히 복원됨 = retained 만
+    # True. "글자 중간 절단" = 둘 다 True (일부 조각은 살고 일부는 잘림) —
+    # 전부 잘려서 아예 안 보이는 것(any_dropped 만 True)과는 구분해야 한다.
+    ks, ke = span
+    char_any_retained = [False] * (ke - ks)
+    char_any_dropped = [False] * (ke - ks)
+    for i in key_idx:
+        s, e = offsets[i]
+        lo, hi = max(s, ks), min(e, ke)
+        retained_tok = i < used_n
+        for c in range(lo, hi):
+            idx = c - ks
+            if retained_tok:
+                char_any_retained[idx] = True
+            else:
+                char_any_dropped[idx] = True
+    covered = sum(1 for ret, drp in zip(char_any_retained, char_any_dropped) if ret and not drp)
+    key_char_total = ke - ks
+    r.key_chars_retained = covered
+    r.key_chars_covered = covered
+    r.key_chars_uncovered = key_char_total - covered
+    r.key_retention_ratio_char = covered / max(key_char_total, 1)
+    r.key_split_mid_character = any(
+        ret and drp for ret, drp in zip(char_any_retained, char_any_dropped))
+
     return r

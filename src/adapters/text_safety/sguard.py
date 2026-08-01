@@ -223,7 +223,10 @@ def load_real_sguard_adapter(device: str = "cuda") -> SGuardAdapter:
             return hf_tok.decode(ids)
 
         def apply_chat_template(self, prompt_text, response_text):
-            msgs = [{config.SGUARD_MESSAGE_KEY_PROMPT: prompt_text,
+            # 'role' 이 없으면 chat template 이 message['role'] 참조에서
+            # UndefinedError 로 실패한다 (실모델 PILOT GATE 0a 에서 확인, #4).
+            msgs = [{"role": "user",
+                     config.SGUARD_MESSAGE_KEY_PROMPT: prompt_text,
                      config.SGUARD_MESSAGE_KEY_RESPONSE: response_text}]
             return hf_tok.apply_chat_template(msgs, tokenize=False,
                                               add_generation_prompt=True)
@@ -263,8 +266,12 @@ def load_real_sguard_adapter(device: str = "cuda") -> SGuardAdapter:
             ids_t = torch.tensor([input_ids], device=device)
             attn_t = torch.ones_like(ids_t)
             with torch.no_grad():
+                # PILOT GATE 0a 실측: EOS 를 내지 않고 계속 생성하므로 5(카테고리 수)로
+                # 명시적으로 자른다. 6 이상을 주면 raw 뒤에 6번째 토큰이 붙어
+                # parse_sguard_output 이 5번째 줄 값 파싱에서 실패할 수 있다.
                 out = hf_model.generate(input_ids=ids_t, attention_mask=attn_t,
-                                        max_new_tokens=6, do_sample=False)
+                                        max_new_tokens=len(config.SGUARD_CATEGORIES),
+                                        do_sample=False)
             return hf_tok.decode(out[0, ids_t.shape[1]:], skip_special_tokens=True)
 
         def label_logits(self, input_ids):
@@ -276,7 +283,8 @@ def load_real_sguard_adapter(device: str = "cuda") -> SGuardAdapter:
             attn_t = torch.ones_like(ids_t)
             with torch.no_grad():
                 out = hf_model.generate(input_ids=ids_t, attention_mask=attn_t,
-                                        max_new_tokens=6, do_sample=False,
+                                        max_new_tokens=len(config.SGUARD_CATEGORIES),
+                                        do_sample=False,
                                         output_scores=True, return_dict_in_generate=True)
             scores = out.scores  # tuple, 스텝별 [1, vocab] logits
             result = {}
