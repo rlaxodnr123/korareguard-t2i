@@ -97,11 +97,14 @@ class AltDiffusionAdapter(GeneratorAdapter):
 
 
 def load_real_altdiffusion_adapter(
-    device: str = "cuda",
+    device: str | None = None,
     input_ids_dump_path: str | None = "input_ids_sample.jsonl",
     input_ids_dump_n: int = 10,
 ) -> AltDiffusionAdapter:
     """실제 diffusers pipeline 로더 (lazy import).
+
+    device 미지정 시 CUDA 가능 여부로 자동 결정 (GPU 없는 로컬에서도 로드 자체는
+    가능해야 함 — sguard.py 의 동일 이슈와 같은 이유).
 
     m18 의 model_index.json 은 diffusers 0.8.0.dev0 시절 파일이라 text_encoder 를
     "alt_diffusion" 모듈로 지정하는데, 이후 diffusers 가 그 모듈을
@@ -119,6 +122,7 @@ def load_real_altdiffusion_adapter(
     config.ALTDIFF_FALLBACK_* 를 pin 한 뒤 이 함수의 model_id 를 교체한다
     (그때도 from_pretrained 가 아니라 이 방식의 component 조립을 먼저 시도할 것).
     """
+    import torch  # lazy
     from diffusers import (  # lazy
         AltDiffusionPipeline, AutoencoderKL, PNDMScheduler, UNet2DConditionModel,
     )
@@ -126,6 +130,9 @@ def load_real_altdiffusion_adapter(
         RobertaSeriesModelWithTransformation,
     )
     from transformers import XLMRobertaTokenizer
+
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
     mid, rev = config.ALTDIFF_MODEL_ID, config.ALTDIFF_REVISION
     pipe = AltDiffusionPipeline(

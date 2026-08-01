@@ -197,12 +197,18 @@ def parse_sguard_output(raw: str) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------- 실모델 로더 (lazy)
-def load_real_sguard_adapter(device: str = "cuda") -> SGuardAdapter:
+def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
     """실제 HF 모델용 로더. transformers 는 여기서만 lazy import.
 
+    device 미지정 시 CUDA 가능 여부로 자동 결정 — "cuda" 하드코딩이면 GPU 없는
+    로컬(CPU-only torch)에서 로드 자체가 AssertionError 로 막힌다.
     PILOT GATE 0a 에서 이 로더로 빈-response 동작을 먼저 검증한 뒤 대량 실행할 것.
     """
+    import torch  # lazy
     from transformers import AutoModelForCausalLM, AutoTokenizer  # lazy
+
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
     hf_tok = AutoTokenizer.from_pretrained(
         config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION)
