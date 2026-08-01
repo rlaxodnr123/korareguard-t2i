@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from key_span import (  # noqa: E402
     InputPolicy, analyze_key_span,
     VISIBILITY_FULL, VISIBILITY_PARTIAL, VISIBILITY_NONE, STATUS_OK,
+    ROLE_TEXT_SAFETY, ROLE_GENERATOR,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -108,19 +109,29 @@ def main() -> int:
 
     sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
     ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, subfolder="tokenizer")
-    ad_native = int(ad_tok.model_max_length)
+    ad_declared = int(ad_tok.model_max_length)
+    # diffusers 는 tokenizer(padding='max_length', max_length=77, truncation=True) 를 쓴다.
+    # HF 는 special token 자리를 먼저 확보한 뒤 content 를 자르므로 실제 content 예산은
+    # 77 이 아니라 77 - 2 = 75 다. 세 조건을 모두 content 토큰 공간에서 정의해야
+    # 위치·retention 지표를 서로 비교할 수 있으므로 add_special_tokens=False 로 맞춘다.
+    # (analyze_tokens.py 와 같은 정의여야 한다. 예전에 여기만 77/True 로 남아 있어
+    #  AltDiffusion full 이 1 많고 H2a 가 1 많게 나왔다.)
+    ad_n_special = len(ad_tok("", add_special_tokens=True)["input_ids"])
+    ad_content_budget = ad_declared - ad_n_special
 
     policies = [
         (COND_SG_NATIVE, sg_tok,
-         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role="safety",
+         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role=ROLE_TEXT_SAFETY,
                      add_special_tokens=False, cap=None, cap_kind="none")),
         (COND_SG_CAP, sg_tok,
          InputPolicy(name=f"constrained_{EXPERIMENTAL_TOKEN_CAP}", model_id=SGUARD_MODEL_ID,
-                     model_role="safety", add_special_tokens=False,
+                     model_role=ROLE_TEXT_SAFETY, add_special_tokens=False,
                      cap=EXPERIMENTAL_TOKEN_CAP, cap_kind="user_content")),
         (COND_AD, ad_tok,
-         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role="generator",
-                     add_special_tokens=True, cap=ad_native, cap_kind="native")),
+         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role=ROLE_GENERATOR,
+                     add_special_tokens=False, cap=ad_content_budget, cap_kind="native",
+                     declared_max_length=ad_declared,
+                     special_tokens_reserved=ad_n_special)),
     ]
 
     t0 = time.time()
@@ -145,7 +156,8 @@ def main() -> int:
               f"{elapsed:.1f}초")
     md.append(f"- SGuard experimental token cap: **{EXPERIMENTAL_TOKEN_CAP}** "
               f"(user content budget, native limit 아님)")
-    md.append(f"- AltDiffusion native max length: **{ad_native}** (runtime)")
+    md.append(f"- AltDiffusion declared max length: **{ad_declared}** (runtime), "
+              f"special token {ad_n_special}개를 빼면 content 예산 **{ad_content_budget}**")
     md.append("")
 
     print(f"\n{SEP}\nPHASE 3 — Length Calibration & Signal Preview\n{SEP}")

@@ -44,6 +44,11 @@ VISIBILITY_NONE = schema.VISIBILITY_NONE
 STATUS_OK = schema.STATUS_OK
 STATUS_ERROR = schema.STATUS_ERROR
 
+# InputPolicy.model_role 에 넣을 값. 리터럴 'safety' 를 쓰면 schema 의 'text_safety'
+# 와 어긋나 통합 join 이 0 행이 된다. 실제로 한 번 겪었으므로 여기서 재수출한다.
+ROLE_TEXT_SAFETY = schema.ROLE_TEXT_SAFETY
+ROLE_GENERATOR = schema.ROLE_GENERATOR
+
 
 @dataclass(frozen=True)
 class InputPolicy:
@@ -233,9 +238,14 @@ def analyze_key_span(
         return res
 
     n = res.total_tokens_pretrunc
+    # end 는 시작 index 가 아니라 "마지막 key 토큰까지 포함한" 소비량이므로 +1 한다.
+    # key 가 맨 끝 토큰이면 end_ratio 가 정확히 1.0 이 되어야 한다.
+    # center 는 그 정규화 구간 [start_ratio, end_ratio] 의 중점으로 정의한다.
+    # (팀 어댑터 analyze_content_tokens 와 같은 정의여야 한다 — 예전에 여기만
+    #  inclusive index 의 중점을 써서 432행 전부가 1/(2n) 만큼 어긋났다)
     res.key_start_ratio = res.key_start_pretrunc / n
     res.key_end_ratio = (res.key_end_pretrunc + 1) / n
-    res.key_center_ratio = (res.key_start_pretrunc + res.key_end_pretrunc) / 2 / n
+    res.key_center_ratio = (res.key_start_ratio + res.key_end_ratio) / 2
     if res.key_character_count:
         res.key_tokens_per_character = res.key_token_count_original / res.key_character_count
 

@@ -59,9 +59,9 @@ our benchmark therefore ranges from 1,497 to 1,926 tokens — far below the nati
 context, so **condition 1 truncates nothing** (432/432 prompts fully visible).
 
 Two properties of this template constrain the implementation. First, the
-user prompt sits at roughly 94% of the way through the formatted string, so any
-cap smaller than the prefix would terminate inside the taxonomy and never reach
-the prompt. Second, the tokenizer's `truncation_side` is `right`, so the
+user prompt always begins after the first 1,416 tokens — 73.5% to 94.6% of the
+way through the formatted input (median 88.4%) — so any cap smaller than the
+prefix would terminate inside the taxonomy and never reach the prompt. Second, the tokenizer's `truncation_side` is `right`, so the
 tokenizer's built-in truncation would delete the suffix and the generation
 marker. Condition 2 is therefore implemented by splicing at the token-id level —
 `prefix + content[:budget] + suffix` — rather than by truncating the formatted
@@ -204,11 +204,15 @@ level truncation is saturated and offers no gradient.
 ## X.6 Position and key retention (RQ-T5, RQ-T7)
 
 Key position was manipulated by string construction (front / middle / back).
-We verified that this manipulation survives tokenization: the normalized token
-position of the key matches its character position to within 0.04, and the two
-components agree with each other to a median of 0.013. Token-level repositioning
-was not attempted, as it would require a different prompt string per component
-and would make the cross-component comparison in X.7 undefined.
+We verified that this manipulation survives tokenization. The normalized token
+centre of the key is 0.038 (range 0.004–0.324) for front, 0.506 (0.437–0.550)
+for middle and 0.954 (0.649–0.993) for back: **the three ranges do not overlap**,
+so the character-level manipulation preserves separation in token space. The
+token centre deviates from the character centre by a median of 0.006 (p90 0.042,
+max 0.102), and the two components differ from each other by a median of 0.012
+(max 0.121). Token-level repositioning was not attempted, as it would require a
+different prompt string per component and would make the cross-component
+comparison in X.7 undefined.
 
 Under condition 1 the key expression is fully visible for all 432 prompts. The
 remaining two conditions show a consistent gradient in position and length:

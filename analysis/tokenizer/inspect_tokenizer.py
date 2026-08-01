@@ -12,11 +12,11 @@ inspect_tokenizer.py — KoRareGuard-T2I / Student 2 (Tokenization & Truncation)
 모델 가중치를 내려받지 않으므로 GPU 도 필요하지 않다.
 
 가장 중요한 산출물은 SGuard chat template 의 overhead token 수이다.
-이 값이 experimental token cap(127) 을 "전체 입력" 에 적용할 수 있는지,
+이 값이 experimental token cap(77) 을 "전체 입력" 에 적용할 수 있는지,
 아니면 "user content" 에만 적용해야 하는지를 결정한다.
 
 주의:
-  - 127 은 본 연구가 정의한 experimental token cap 이며
+  - 77 은 본 연구가 정의한 experimental token cap 이며
     SGuard 의 native maximum context length 가 아니다.
   - AltDiffusion 의 77 은 하드코딩하지 않고 runtime 값을 기록한다.
 
@@ -47,13 +47,24 @@ log = logging.getLogger("inspect_tokenizer")
 # 설정 — 값은 한 곳에만 둔다 (하드코딩 분산 금지)
 # --------------------------------------------------------------------------
 
+# 값 어휘는 팀 공용 SSOT 를 따른다. 리터럴 'safety' 를 쓰면 schema 의
+# 'text_safety' 와 어긋나 통합 join 이 조용히 0 행이 된다.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.common import schema  # noqa: E402
+
 SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
 ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
 ALTDIFF_TOKENIZER_SUBFOLDER = "tokenizer"
 ALTDIFF_TEXT_ENCODER_SUBFOLDER = "text_encoder"
 
 # 본 연구에서 정의한 experimental token cap (SGuard native limit 이 아님)
-EXPERIMENTAL_TOKEN_CAP = 127
+#
+# 초안에서는 127 이었으나 77 로 확정했다. 127 로는 H2a(안전필터는 핵심 표현을
+# 못 보는데 생성모델은 보는 구간)가 산술적으로 생기지 않는다. AltDiffusion 이
+# 핵심 표현을 전부 보는 317개 프롬프트의 SGuard 기준 key 끝 위치가 최대 125라,
+# cap 127 에서는 'cap 보다 뒤에 있는' 사례가 0건이 된다. 관측 불가능하게
+# 설계하는 셈이라 조건 2b(127)는 팀 합의로 폐기했다 (2026-08-02).
+EXPERIMENTAL_TOKEN_CAP = 77
 
 OUT_PATH = Path(__file__).resolve().parent / "tokenizer_metadata.json"
 
@@ -309,7 +320,7 @@ def analyze_chat_template(tok: Any) -> dict[str, Any]:
                 tok_str = tok.convert_ids_to_tokens([tid])[0]
                 print(f"      {tid:>7}  {tok_str!r:>22}  offset={(a, b)}")
 
-    # ---- 127 실행 가능성 판정 -------------------------------------------
+    # ---- cap 실행 가능성 판정 -------------------------------------------
     ovh = out["template_overhead_tokens"]["value"]
     feasible_total = ovh < EXPERIMENTAL_TOKEN_CAP
     budget = EXPERIMENTAL_TOKEN_CAP - ovh
@@ -477,7 +488,7 @@ def main() -> int:
         return 1
 
     sg: dict[str, Any] = {"model_id": tagged(SGUARD_MODEL_ID, "config"),
-                          "model_role": tagged("safety", "config")}
+                          "model_role": tagged(schema.ROLE_TEXT_SAFETY, "config")}
     sg.update(basic_metadata(sg_tok))
     print_metadata("SGuard tokenizer runtime",
                    {k: v for k, v in sg.items() if k != "special_tokens_map"})
@@ -514,7 +525,7 @@ def main() -> int:
 
     ad: dict[str, Any] = {"model_id": tagged(ALTDIFF_MODEL_ID, "config"),
                           "tokenizer_subfolder": tagged(ALTDIFF_TOKENIZER_SUBFOLDER, "config"),
-                          "model_role": tagged("generator", "config")}
+                          "model_role": tagged(schema.ROLE_GENERATOR, "config")}
     ad.update(basic_metadata(ad_tok))
     print_metadata("AltDiffusion tokenizer runtime",
                    {k: v for k, v in ad.items() if k != "special_tokens_map"})
