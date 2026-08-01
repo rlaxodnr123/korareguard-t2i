@@ -39,7 +39,7 @@
       "source": "config"
     },
     "model_role": {
-      "value": "safety",
+      "value": "text_safety",
       "source": "config"
     },
     "tokenizer_class": {

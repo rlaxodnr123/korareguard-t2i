@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from key_span import (  # noqa: E402
     InputPolicy, analyze_key_span,
     VISIBILITY_FULL, VISIBILITY_PARTIAL, VISIBILITY_NONE, STATUS_OK,
+    ROLE_TEXT_SAFETY, ROLE_GENERATOR,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -120,14 +121,14 @@ def main() -> int:
 
     policies = [
         (COND_SG_NATIVE, sg_tok,
-         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role="safety",
+         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role=ROLE_TEXT_SAFETY,
                      add_special_tokens=False, cap=None, cap_kind="none")),
         (COND_SG_CAP, sg_tok,
          InputPolicy(name=f"constrained_{EXPERIMENTAL_TOKEN_CAP}", model_id=SGUARD_MODEL_ID,
-                     model_role="safety", add_special_tokens=False,
+                     model_role=ROLE_TEXT_SAFETY, add_special_tokens=False,
                      cap=EXPERIMENTAL_TOKEN_CAP, cap_kind="user_content")),
         (COND_AD, ad_tok,
-         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role="generator",
+         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role=ROLE_GENERATOR,
                      add_special_tokens=False, cap=ad_content_budget, cap_kind="native",
                      declared_max_length=ad_declared,
                      special_tokens_reserved=ad_n_special)),

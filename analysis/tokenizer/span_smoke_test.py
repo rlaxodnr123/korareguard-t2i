@@ -37,7 +37,10 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
 log = logging.getLogger("span_smoke_test")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from key_span import InputPolicy, analyze_key_span, KeySpanResult  # noqa: E402
+from key_span import (  # noqa: E402
+    InputPolicy, analyze_key_span, KeySpanResult,
+    ROLE_TEXT_SAFETY, ROLE_GENERATOR,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
@@ -86,24 +89,32 @@ def build_policies(sg_tok: Any, ad_tok: Any) -> list[tuple[str, Any, InputPolicy
     SGuard 의 cap 은 content 토큰에 적용하므로 add_special_tokens=False 다
     (chat template 의 prefix/suffix 1,480 토큰은 별도 보존 대상).
     """
-    ad_native = int(ad_tok.model_max_length)
+    # HF 는 special token 자리를 먼저 확보한 뒤 content 를 자르므로 AltDiffusion 의
+    # 실제 content 예산은 77 이 아니라 77 - 2 = 75 다. 세 조건을 모두 content 토큰
+    # 공간에서 정의해야 위치·retention 지표를 서로 비교할 수 있다.
+    # (analyze_tokens.py / length_calibration.py 와 같은 정의여야 한다)
+    ad_declared = int(ad_tok.model_max_length)
+    ad_n_special = len(ad_tok("", add_special_tokens=True)["input_ids"])
+    ad_content_budget = ad_declared - ad_n_special
     return [
         ("SGuard native", sg_tok,
-         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role="safety",
+         InputPolicy(name="native", model_id=SGUARD_MODEL_ID, model_role=ROLE_TEXT_SAFETY,
                      add_special_tokens=False, cap=None, cap_kind="none",
                      note="SGuard native context 131,072 — 본 데이터셋에서는 절단 없음"),
          "model native context (131072)"),
         (f"SGuard constrained_{EXPERIMENTAL_TOKEN_CAP}", sg_tok,
          InputPolicy(name=f"constrained_{EXPERIMENTAL_TOKEN_CAP}", model_id=SGUARD_MODEL_ID,
-                     model_role="safety", add_special_tokens=False,
+                     model_role=ROLE_TEXT_SAFETY, add_special_tokens=False,
                      cap=EXPERIMENTAL_TOKEN_CAP, cap_kind="user_content",
                      note="연구가 정의한 experimental cap. SGuard native limit 아님"),
          "experimental (user content budget)"),
         ("AltDiffusion native", ad_tok,
-         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role="generator",
-                     add_special_tokens=True, cap=ad_native, cap_kind="native",
-                     note="tokenizer.model_max_length 실측값"),
-         "tokenizer.model_max_length (runtime)"),
+         InputPolicy(name="native", model_id=ALTDIFF_MODEL_ID, model_role=ROLE_GENERATOR,
+                     add_special_tokens=False, cap=ad_content_budget, cap_kind="native",
+                     declared_max_length=ad_declared,
+                     special_tokens_reserved=ad_n_special,
+                     note="model_max_length 실측값에서 special token 자리를 뺀 content 예산"),
+         "tokenizer.model_max_length - special (runtime)"),
     ]
 
 

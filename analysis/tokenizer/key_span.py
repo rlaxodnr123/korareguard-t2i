@@ -44,6 +44,11 @@ VISIBILITY_NONE = schema.VISIBILITY_NONE
 STATUS_OK = schema.STATUS_OK
 STATUS_ERROR = schema.STATUS_ERROR
 
+# InputPolicy.model_role 에 넣을 값. 리터럴 'safety' 를 쓰면 schema 의 'text_safety'
+# 와 어긋나 통합 join 이 0 행이 된다. 실제로 한 번 겪었으므로 여기서 재수출한다.
+ROLE_TEXT_SAFETY = schema.ROLE_TEXT_SAFETY
+ROLE_GENERATOR = schema.ROLE_GENERATOR
+
 
 @dataclass(frozen=True)
 class InputPolicy:

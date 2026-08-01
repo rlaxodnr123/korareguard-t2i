@@ -47,6 +47,11 @@ log = logging.getLogger("inspect_tokenizer")
 # 설정 — 값은 한 곳에만 둔다 (하드코딩 분산 금지)
 # --------------------------------------------------------------------------
 
+# 값 어휘는 팀 공용 SSOT 를 따른다. 리터럴 'safety' 를 쓰면 schema 의
+# 'text_safety' 와 어긋나 통합 join 이 조용히 0 행이 된다.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.common import schema  # noqa: E402
+
 SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
 ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
 ALTDIFF_TOKENIZER_SUBFOLDER = "tokenizer"
@@ -483,7 +488,7 @@ def main() -> int:
         return 1
 
     sg: dict[str, Any] = {"model_id": tagged(SGUARD_MODEL_ID, "config"),
-                          "model_role": tagged("safety", "config")}
+                          "model_role": tagged(schema.ROLE_TEXT_SAFETY, "config")}
     sg.update(basic_metadata(sg_tok))
     print_metadata("SGuard tokenizer runtime",
                    {k: v for k, v in sg.items() if k != "special_tokens_map"})
@@ -520,7 +525,7 @@ def main() -> int:
 
     ad: dict[str, Any] = {"model_id": tagged(ALTDIFF_MODEL_ID, "config"),
                           "tokenizer_subfolder": tagged(ALTDIFF_TOKENIZER_SUBFOLDER, "config"),
-                          "model_role": tagged("generator", "config")}
+                          "model_role": tagged(schema.ROLE_GENERATOR, "config")}
     ad.update(basic_metadata(ad_tok))
     print_metadata("AltDiffusion tokenizer runtime",
                    {k: v for k, v in ad.items() if k != "special_tokens_map"})
