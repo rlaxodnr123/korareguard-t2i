@@ -52,6 +52,7 @@ STATUS_ERROR = "error"
 class TokCols:
     # [키]
     PROMPT_ID = "prompt_id"
+    CONCEPT_ID = "concept_id"        # paired 비교(common/rare) 그룹 키. prompts.csv 의 concept_id.
     MODEL_ID = "model_id"
     MODEL_ROLE = "model_role"
     INPUT_POLICY = "input_policy"
@@ -59,6 +60,9 @@ class TokCols:
     EXPERIMENTAL_TOKEN_CAP = "experimental_token_cap"
     MAX_LENGTH_EFFECTIVE = "max_length_effective"
     MAX_LENGTH_SOURCE = "max_length_source"
+    CONTENT_TOKEN_BUDGET = "content_token_budget"      # 실제 content 에 쓸 수 있는 예산 (AltDiff: 75)
+    DECLARED_MAX_LENGTH = "declared_max_length"        # tokenizer 설정값 (AltDiff: 77, special 포함)
+    SPECIAL_TOKENS_RESERVED = "special_tokens_reserved"  # declared - budget (AltDiff: 2)
     # [조건]
     SAFETY_LABEL = "safety_label"
     RARITY_LABEL = "rarity_label"
@@ -81,6 +85,15 @@ class TokCols:
     KEY_TOKENS_RETAINED = "key_tokens_retained"
     KEY_RETENTION_RATIO = "key_retention_ratio"
     KEY_VISIBILITY = "key_visibility"
+    # [PASS 2 — 글자 단위] 토큰 기준과 갈리는 행 대응(#8): SentencePiece byte-fallback
+    # 으로 한글 음절이 여러 토큰(바이트 조각)으로 쪼개지면, 그 중 일부만 살아남아도
+    # 토큰 기준 retention 은 0보다 크게 나온다. 실제로 온전한 글자가 하나도 안 남을 수
+    # 있어(예: 쥐불놀이, 택견) 글자 단위 지표를 별도로 둔다.
+    KEY_CHARS_RETAINED = "key_chars_retained"      # 절단 후 온전히 복원되는 key 글자 수
+    KEY_CHARS_COVERED = "key_chars_covered"        # = key_chars_retained (분자, 명칭만 별도 요청)
+    KEY_CHARS_UNCOVERED = "key_chars_uncovered"    # key_character_count - key_chars_covered
+    KEY_RETENTION_RATIO_CHAR = "key_retention_ratio_char"  # key_chars_covered / key_character_count
+    KEY_SPLIT_MID_CHARACTER = "key_split_mid_character"    # 절단 경계가 key 글자 중간을 지남
     # [위치]
     KEY_START_RATIO = "key_start_ratio"
     KEY_CENTER_RATIO = "key_center_ratio"

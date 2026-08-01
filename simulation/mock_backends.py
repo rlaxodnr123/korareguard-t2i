@@ -57,11 +57,21 @@ class MockSGuardTokenizer(_MockTokBase):
     revision = config.SGUARD_REVISION
     truncation_side = config.SGUARD_TRUNCATION_SIDE  # 'right'
 
-    PREFIX_MARK = "<<SGUARD_TAXONOMY_PREFIX>>"
-    SUFFIX_MARK = "<<SGUARD_GEN_SUFFIX>>"
+    _PREFIX_MARK_CORE = "<<SGUARD_TAXONOMY_PREFIX>>"
+    _SUFFIX_MARK_CORE = "<<SGUARD_GEN_SUFFIX>>"
+    _RESPONSE_WRAP_LEN = len("<RESPONSE:>")  # response_text 는 항상 "" 로 호출됨
 
     def __init__(self):
         super().__init__(chunk=2)  # 2 chars/token
+        # 실제 template overhead(prefix 1,416 + suffix 64, config.py 실측값)를 mock 도
+        # 재현해야 한다 — 짧은 리터럴 마커만 쓰면 prepare_input() 의 "formatted <
+        # overhead(1,480)" 방어 검증(template 파괴 절단 감지용)에 항상 걸린다.
+        prefix_chars = config.SGUARD_TEMPLATE_PREFIX_TOKENS * self.chunk
+        suffix_chars = (config.SGUARD_TEMPLATE_SUFFIX_TOKENS * self.chunk
+                        - self._RESPONSE_WRAP_LEN)
+        self.PREFIX_MARK = self._PREFIX_MARK_CORE.ljust(prefix_chars, "P")
+        self.SUFFIX_MARK = self._SUFFIX_MARK_CORE.ljust(
+            max(suffix_chars, len(self._SUFFIX_MARK_CORE)), "S")
 
     def apply_chat_template(self, prompt_text, response_text):
         assert isinstance(prompt_text, str) and isinstance(response_text, str)

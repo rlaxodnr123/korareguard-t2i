@@ -80,12 +80,14 @@ def synth_benchmark(n=config.N_PROMPTS):
         length = length_keys[i % 3]
         key = KEY if safety == schema.UNSAFE else "고양이그림"  # safe 는 무해 key
         prompt = build_prompt(pos, key, LENGTHS[length])
+        topic = _topic_tag(i)
         prompt_id = "_".join([
-            safety.upper(), _topic_tag(i), f"{i % 100:02d}",
+            safety.upper(), topic, f"{i % 100:02d}",
             rarity.upper(), length.upper(), pos.upper(),
         ])
         rows.append({
             "prompt_id": prompt_id,
+            "concept_id": f"CONCEPT_{topic}",
             "prompt": prompt, "key_expression": key,
             "safety_label": safety, "rarity_label": rarity,
             "position_level": pos, "length_level": length,
@@ -110,30 +112,40 @@ def run_student2(bench, sg: SGuardAdapter, ad: AltDiffusionAdapter):
         # SGuard: native + constrained_77
         for policy in (schema.POLICY_NATIVE, schema.POLICY_CONSTRAINED_77):
             tr = sg.tokenize(b["prompt"], b["key_expression"], policy)
+            cap = None if policy == schema.POLICY_NATIVE else config.CAP_CONSTRAINED_77
             rows.append(_tok_row(b, sg.model_id, schema.ROLE_TEXT_SAFETY, policy, tr,
-                                 cap=(None if policy == schema.POLICY_NATIVE
-                                      else config.CAP_CONSTRAINED_77),
+                                 cap=cap,
                                  max_len=config.SGUARD_NATIVE_CONTEXT,
                                  max_src="model_config", tok=sg.tok,
                                  overhead=config.SGUARD_TEMPLATE_OVERHEAD_TOKENS,
                                  # 근사(overhead + pretrunc) 대신 실제 template 토큰화로 계산(±2 오차 제거)
-                                 formatted_pretrunc=sg.formatted_pretrunc_tokens(b["prompt"])))
+                                 formatted_pretrunc=sg.formatted_pretrunc_tokens(b["prompt"]),
+                                 # SGuard 는 AltDiff 처럼 declared_max_length 에서 special
+                                 # token 을 뺀 고정 budget 개념이 없다 — cap 자체가 budget.
+                                 content_budget=cap, declared_max_len=None, special_tokens=0))
         # AltDiff: native (template 없음 — overhead 0 + pretrunc 가 이미 정확함)
         tr = ad.tokenize(b["prompt"], b["key_expression"])
         rows.append(_tok_row(b, ad.model_id, schema.ROLE_GENERATOR, schema.POLICY_NATIVE,
                              tr, cap=None, max_len=config.ALTDIFF_MODEL_MAX_LENGTH,
                              max_src="tokenizer_config", tok=ad.tok, overhead=0,
-                             formatted_pretrunc=tr.total_tokens_pretrunc))
+                             formatted_pretrunc=tr.total_tokens_pretrunc,
+                             # declared 77 vs 실제 content budget 75 (special 2개 제외) — 구분해서 기록.
+                             content_budget=config.ALTDIFF_CONTENT_BUDGET,
+                             declared_max_len=config.ALTDIFF_MODEL_MAX_LENGTH,
+                             special_tokens=config.ALTDIFF_NUM_SPECIAL_TOKENS))
     return rows
 
 
 def _tok_row(b, model_id, role, policy, tr, cap, max_len, max_src, tok, overhead,
-            formatted_pretrunc):
+            formatted_pretrunc, content_budget, declared_max_len, special_tokens):
     C = schema.TokCols
     return {
-        C.PROMPT_ID: b["prompt_id"], C.MODEL_ID: model_id, C.MODEL_ROLE: role,
+        C.PROMPT_ID: b["prompt_id"], C.CONCEPT_ID: b["concept_id"],
+        C.MODEL_ID: model_id, C.MODEL_ROLE: role,
         C.INPUT_POLICY: policy, C.EXPERIMENTAL_TOKEN_CAP: cap,
         C.MAX_LENGTH_EFFECTIVE: max_len, C.MAX_LENGTH_SOURCE: max_src,
+        C.CONTENT_TOKEN_BUDGET: content_budget, C.DECLARED_MAX_LENGTH: declared_max_len,
+        C.SPECIAL_TOKENS_RESERVED: special_tokens,
         C.SAFETY_LABEL: b["safety_label"], C.RARITY_LABEL: b["rarity_label"],
         C.LENGTH_LEVEL: b["length_level"], C.POSITION_LEVEL: b["position_level"],
         C.KEY_EXPRESSION: b["key_expression"],
@@ -147,6 +159,11 @@ def _tok_row(b, model_id, role, policy, tr, cap, max_len, max_src, tok, overhead
         C.KEY_TOKENS_RETAINED: tr.key_tokens_retained,
         C.KEY_RETENTION_RATIO: round(tr.key_retention_ratio, 4),
         C.KEY_VISIBILITY: tr.key_visibility,
+        C.KEY_CHARS_RETAINED: tr.key_chars_retained,
+        C.KEY_CHARS_COVERED: tr.key_chars_covered,
+        C.KEY_CHARS_UNCOVERED: tr.key_chars_uncovered,
+        C.KEY_RETENTION_RATIO_CHAR: round(tr.key_retention_ratio_char, 4),
+        C.KEY_SPLIT_MID_CHARACTER: tr.key_split_mid_character,
         C.KEY_START_RATIO: round(tr.key_start_ratio, 4),
         C.KEY_CENTER_RATIO: round(tr.key_center_ratio, 4),
         C.KEY_END_RATIO: round(tr.key_end_ratio, 4),
