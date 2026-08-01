@@ -267,9 +267,17 @@ def analyze_key_span(
     #
     # 주의: 어떤 토큰도 덮지 않는 문자가 있다. SentencePiece(AltCLIP)는 '▁' 마커가
     # 선행 공백을 표현하되 offset 에는 포함시키지 않으므로, key 안의 공백이
-    # uncovered 로 남는다. 이런 문자를 분모에 넣으면 절단이 전혀 없어도
-    # ratio_char < 1 이 되어버린다. 따라서 covered 문자만 분모로 쓰고
-    # uncovered 개수는 따로 기록한다.
+    # 어떤 토큰 offset 에도 잡히지 않는다. 그 공백은 decode 하면 그대로 복원되므로
+    # 손실이 아니라 애초에 추적 대상이 아니다. 분자·분모 양쪽에서 제외한다.
+    #
+    # 세 컬럼의 의미 (팀 SSOT schema.py 정의를 따른다):
+    #   key_chars_covered   토큰 offset 이 닿은 key 글자 수            = 비율의 분모
+    #   key_chars_retained  그중 절단되지 않고 온전히 남은 글자 수      = 비율의 분자
+    #   key_chars_uncovered covered - retained. 즉 "토큰이 닿았는데 잘린" 글자 수
+    #
+    # uncovered 는 이름과 달리 "아무 토큰도 안 닿은 글자" 가 아니다. 그 값이 필요하면
+    # key_character_count - key_chars_covered 로 언제든 구할 수 있으므로 정보 손실은
+    # 없다. 팀 어댑터(analyze_content_tokens)와 정의를 하나로 맞추기 위한 합의다.
     chars_ok = 0
     chars_covered = 0
     split_mid_char = False
@@ -285,7 +293,7 @@ def analyze_key_span(
             split_mid_char = True          # 일부만 남음 = 글자가 반쪽
     res.key_chars_retained = chars_ok
     res.key_chars_covered = chars_covered
-    res.key_chars_uncovered = res.key_character_count - chars_covered
+    res.key_chars_uncovered = chars_covered - chars_ok
     res.key_retention_ratio_char = chars_ok / chars_covered if chars_covered else 0.0
     res.key_split_mid_character = split_mid_char
 

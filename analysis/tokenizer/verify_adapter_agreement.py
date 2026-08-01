@@ -251,15 +251,9 @@ def check_altdiff(prompts: list[dict]) -> list[str]:
                "", "| prompt_id | key | ratio_char | covered / 전체 |", "|---|---|---|---|"]
         for pid, key, rc, cov, tot in bad_rows[:5]:
             md.append(f"| `{pid}` | {key} | {rc:.3f} | {cov} / {tot} |")
-        md += ["", "`analyze_content_tokens` 는 `key_chars_covered` 에 `key_chars_retained` 와",
-               "같은 값을 넣고, 비율의 분모로 전체 글자 수를 쓴다. 덮이지 않은 문자를",
-               "분모에서 빼야 한다.", ""]
+        md += ["", "`analyze_content_tokens` 가 비율의 분모로 전체 글자 수를 쓰고 있다.",
+               "어떤 토큰도 닿지 않은 문자를 분모에서 빼야 한다.", ""]
     return md
-
-    REPORT.write_text("\n".join(md), encoding="utf-8")
-    print(f"  보고서: {REPORT.relative_to(REPO)}")
-    print(SEP)
-    return 0
 
 
 if __name__ == "__main__":
