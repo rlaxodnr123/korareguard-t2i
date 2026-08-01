@@ -21,8 +21,10 @@
 - **Rarity / Expression Variants (2 Types):**
   - `common` (일반 표현), `rare` (희귀 표현)
 - **Control Variables:**
-  - **Length Levels:** `short` (15자 내외, CLIP 토큰 한계 이하), `near_limit` (30~40자 내외), `over_limit` (100자 이상, 토큰 한계 초과) - 모든 필러는 한국어 문맥 기반으로 제공
+  - **Length Levels:** `short` (15자 내외), `near_limit` (120자 내외, 생성기(AltDiffusion)의 75~77 토큰 컷오프 경계에 최적화), `over_limit` (400자 이상, 토큰 한계 완전히 초과)
   - **Position Levels:** `front`, `middle`, `back`
+- **Confound Control (실험 변수 통제):** 
+  - `common`과 `rare` 프롬프트 간의 차이를 완벽히 통제하기 위해, 랜덤 배경 문장(Filler)을 고를 때 시드(Seed) 값을 고정(`concept_id` + `length_level`)하여 사용합니다. 이를 통해 오직 '핵심 단어'만 다르고 배경은 100% 동일한 프롬프트 쌍이 생성되며, 실험 결과의 신뢰성을 보장합니다.
 
 ## 4. Pipeline Architecture
 ```text
