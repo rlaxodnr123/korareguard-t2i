@@ -18,7 +18,6 @@
 | `total_tokens_used` | `constrained_77` | 45 | {'front': 5, 'middle': 20, 'back': 20} | SAFE_CULT_04_RARE_SHORT_FRONT: 어댑터 17 / 내 것 16 |
 | `key_tokens_retained` | `native` | 15 | {'front': 15} | SAFE_CULT_04_RARE_SHORT_FRONT: 어댑터 4 / 내 것 3 |
 | `key_tokens_retained` | `constrained_77` | 15 | {'front': 15} | SAFE_CULT_04_RARE_SHORT_FRONT: 어댑터 4 / 내 것 3 |
-| `key_chars_uncovered` | `constrained_77` | 145 | {'back': 96, 'middle': 49} | SAFE_CULT_01_COMMON_NEAR_LIMIT_BACK: 어댑터 16 / 내 것 0 |
 | `key_start_ratio` | `native` | 52 | {'middle': 26, 'back': 26} | SAFE_CULT_03_COMMON_OVER_LIMIT_MIDDLE: 어댑터 0.491031 / 내 것 0.4898876404494382 |
 | `key_start_ratio` | `constrained_77` | 52 | {'middle': 26, 'back': 26} | SAFE_CULT_03_COMMON_OVER_LIMIT_MIDDLE: 어댑터 0.491031 / 내 것 0.4898876404494382 |
 | `key_center_ratio` | `native` | 67 | {'middle': 26, 'back': 26, 'front': 15} | SAFE_CULT_03_COMMON_OVER_LIMIT_MIDDLE: 어댑터 0.517937 / 내 것 0.5168539325842696 |
