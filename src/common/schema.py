@@ -89,10 +89,14 @@ class TokCols:
     # 으로 한글 음절이 여러 토큰(바이트 조각)으로 쪼개지면, 그 중 일부만 살아남아도
     # 토큰 기준 retention 은 0보다 크게 나온다. 실제로 온전한 글자가 하나도 안 남을 수
     # 있어(예: 쥐불놀이, 택견) 글자 단위 지표를 별도로 둔다.
-    KEY_CHARS_RETAINED = "key_chars_retained"      # 절단 후 온전히 복원되는 key 글자 수
-    KEY_CHARS_COVERED = "key_chars_covered"        # = key_chars_retained (분자, 명칭만 별도 요청)
-    KEY_CHARS_UNCOVERED = "key_chars_uncovered"    # key_character_count - key_chars_covered
-    KEY_RETENTION_RATIO_CHAR = "key_retention_ratio_char"  # key_chars_covered / key_character_count
+    # covered = 어떤 토큰이든 offset 이 실제로 닿은 글자 수(PASS1, policy 무관).
+    # retained = 그중 절단 후에도 온전히 남은 글자 수(PASS2, budget 의존).
+    # key 가 통째로 잘려도 covered 는 그대로고 retained 만 0 이 된다 — 분모(covered)와
+    # 분자(retained)를 policy 에 관계없이 분리해야 ratio 가 의미를 유지한다.
+    KEY_CHARS_COVERED = "key_chars_covered"          # 토큰 offset 이 닿은 key 글자 수 (분모)
+    KEY_CHARS_RETAINED = "key_chars_retained"        # 절단 후 온전히 남은 key 글자 수 (분자)
+    KEY_CHARS_UNCOVERED = "key_chars_uncovered"      # key_chars_covered - key_chars_retained
+    KEY_RETENTION_RATIO_CHAR = "key_retention_ratio_char"  # key_chars_retained / key_chars_covered
     KEY_SPLIT_MID_CHARACTER = "key_split_mid_character"    # 절단 경계가 key 글자 중간을 지남
     # [위치]
     KEY_START_RATIO = "key_start_ratio"

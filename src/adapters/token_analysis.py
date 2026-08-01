@@ -108,8 +108,10 @@ def analyze_content_tokens(
     # 분모 = n (총 content 토큰 수). 이전에는 n-1(0=처음, 1=끝 정규화)을 썼으나
     # 팀 컨벤션을 key_start/n 으로 통일 (기존 분석 결과와 값을 맞추기 위한 결정).
     # key_idx 가 비어있지 않음이 위에서 보장되므로 n>=1 이라 분모가 0이 될 수 없다.
+    # end 는 시작 index 가 아니라 "마지막 key 토큰까지 포함한" 소비량이라 +1 한다.
+    # (key 가 맨 끝 토큰이면 end_ratio 가 정확히 1.0 이 되어야 함, #10)
     r.key_start_ratio = key_idx[0] / n
-    r.key_end_ratio = key_idx[-1] / n
+    r.key_end_ratio = (key_idx[-1] + 1) / n
     r.key_center_ratio = (r.key_start_ratio + r.key_end_ratio) / 2
     r.key_tokens_per_character = len(key_idx) / max(len(key_expression), 1)
 
@@ -158,12 +160,21 @@ def analyze_content_tokens(
                 char_any_retained[idx] = True
             else:
                 char_any_dropped[idx] = True
-    covered = sum(1 for ret, drp in zip(char_any_retained, char_any_dropped) if ret and not drp)
-    key_char_total = ke - ks
-    r.key_chars_retained = covered
+    # covered = 어떤 토큰이든 offset 이 실제로 "닿은" 글자 수 (PASS1, policy/budget 과
+    # 무관 — touched 여부만 본다). SentencePiece 는 선행 공백을 '▁' 안에 흡수해 그
+    # 공백엔 어떤 토큰도 offset 을 안 주므로, 안 닿은 글자는 손실이 아니라 애초에
+    # 추적 대상이 아니다 — 분자·분모 양쪽에서 제외한다 (touched 아닌 글자는
+    # ret=drp=False 라 아래 covered 판정에서 자동으로 빠짐, #9).
+    covered = sum(1 for ret, drp in zip(char_any_retained, char_any_dropped) if ret or drp)
+    # retained_chars = covered 중에서 "잘리지 않고 온전히 남은" 글자 수만 (PASS2, budget
+    # 의존). key 가 통째로 잘리면 retained_chars=0 이 맞지만 covered 는 여전히 원래
+    # 값이어야 한다 — "토큰이 덮긴 덮었는데 잘렸다"와 "애초에 토큰이 안 닿았다"는
+    # 다른 사실이다 (#10).
+    retained_chars = sum(1 for ret, drp in zip(char_any_retained, char_any_dropped) if ret and not drp)
     r.key_chars_covered = covered
-    r.key_chars_uncovered = key_char_total - covered
-    r.key_retention_ratio_char = covered / max(key_char_total, 1)
+    r.key_chars_retained = retained_chars
+    r.key_chars_uncovered = covered - retained_chars
+    r.key_retention_ratio_char = retained_chars / max(covered, 1)
     r.key_split_mid_character = any(
         ret and drp for ret, drp in zip(char_any_retained, char_any_dropped))
 
