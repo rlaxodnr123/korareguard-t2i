@@ -25,14 +25,12 @@
       "source": "runtime"
     },
     "torch_version": {
-      "value": null,
-      "source": "runtime",
-      "note": "미설치 — tokenizer 분석에는 불필요"
+      "value": "2.13.0+cpu",
+      "source": "runtime"
     },
     "diffusers_version": {
-      "value": null,
-      "source": "runtime",
-      "note": "미설치 — tokenizer 분석에는 불필요"
+      "value": "0.39.0",
+      "source": "runtime"
     }
   },
   "sguard": {
@@ -199,7 +197,7 @@
         "note": "offset > content span"
       },
       "experimental_token_cap": {
-        "value": 127,
+        "value": 77,
         "source": "config",
         "note": "본 연구가 정의한 실험적 cap. SGuard native limit 아님"
       },
