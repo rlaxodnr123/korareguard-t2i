@@ -20,6 +20,12 @@ compare_benchmark_variants.py — KoRareGuard-T2I / Student 2
 비교 지표는 참고용으로만 싣는다. C1 을 통과하지 못한 파일의 RQ-T3 수치는
 해석할 수 없으므로 표에 실어도 논문에 인용하지 않는다.
 
+현재 상태(2026-08-02):
+    이 비교의 결론에 따라 prompts_77.csv / prompts_127.csv 와 그 builder 는
+    PR #12 에서 리포에서 제거됐다. 따라서 이 스크립트는 지금 그대로는 돌지 않는다.
+    결과는 benchmark_variant_comparison.md 에 남아 있고, 그것이 파일 선택의
+    근거 기록이다. 스크립트는 재현 절차를 남기기 위해 보존한다.
+
 전제:
     analyze_tokens.py --full --prompts benchmarks/prompts/<파일> 이
     세 파일 모두에 대해 실행되어 있어야 한다.
@@ -56,7 +62,17 @@ SEP = "=" * 88
 
 
 def load(name: str, suffix: str) -> tuple[list[dict], list[dict]]:
-    with open(PROMPT_DIR / name, encoding="utf-8-sig", newline="") as f:
+    src = PROMPT_DIR / name
+    if not src.exists():
+        raise SystemExit(
+            f"{name} 이 리포에 없습니다.\n"
+            "prompts_77.csv / prompts_127.csv 와 그 builder 는 PR #12 에서 삭제됐습니다.\n"
+            "이 비교의 결론(C1 filler 통제를 통과한 파일은 prompts.csv 뿐)은\n"
+            "benchmark_variant_comparison.md 에 이미 기록돼 있으므로 그것을 보면 됩니다.\n"
+            "다시 돌리려면 해당 커밋에서 파일을 꺼내야 합니다:\n"
+            f"    git show 1aeeb95^:benchmarks/prompts/{name} > benchmarks/prompts/{name}"
+        )
+    with open(src, encoding="utf-8-sig", newline="") as f:
         prompts = list(csv.DictReader(f))
     p = OUT_DIR / f"tokenization_results{suffix}.csv"
     if not p.exists():
