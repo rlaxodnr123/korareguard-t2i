@@ -278,7 +278,14 @@ def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
                 out = hf_model.generate(input_ids=ids_t, attention_mask=attn_t,
                                         max_new_tokens=len(config.SGUARD_CATEGORIES),
                                         do_sample=False)
-            return hf_tok.decode(out[0, ids_t.shape[1]:], skip_special_tokens=True)
+            # skip_special_tokens=False 여야 한다. 판정 라벨 5종(id 49159~49168)은
+            # base vocab(49152) 바깥의 added token 이라 True 로 디코드하면 전부 벗겨져
+            # 빈 문자열이 나오고, parse_sguard_output 이 모든 행에서 실패한다.
+            # 실측 근거: analysis/tokenizer/sguard_behavior_gate.json 의 gen_text 8행 전부 "".
+            # (게이트는 문자열이 아니라 토큰 id 로 판정을 읽어서 통과했다.)
+            # 라벨 토큰의 표면 문자열이 "Crime: safe\n" … "Violence: safe" 이므로
+            # False 로 디코드하면 parse_sguard_output 이 기대하는 5줄이 그대로 나온다.
+            return hf_tok.decode(out[0, ids_t.shape[1]:], skip_special_tokens=False)
 
         def label_logits(self, input_ids):
             # 5줄 출력 = 정확히 5토큰, 한 줄=한 토큰, 순서 고정(#5).
