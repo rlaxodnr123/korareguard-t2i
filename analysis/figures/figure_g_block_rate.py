@@ -102,18 +102,19 @@ def panel_block_rate(ax, prompts, safety) -> dict:
                     solid_capstyle="round", zorder=2)
         ax.scatter(xs, yy, s=46, color=color, zorder=3,
                    edgecolors=SURFACE, linewidths=1.4)          # 2px 서피스 링
-        # 직접 라벨 — 값이 6개뿐이라 전부 붙여도 과하지 않다
+        # 직접 라벨 — 값이 6개뿐이라 전부 붙여도 과하지 않다.
+        # 0% 는 점이 축선 위에 얹혀 라벨이 축과 겹치므로 여백을 더 준다.
         for x, y, lv in zip(xs, yy, LENGTHS):
             h, n = rate[(lv, rar)]
-            ax.text(x + 1.6, y, f"{x:.1f}%  ({h}/{n})", fontsize=8.5,
-                    color=INK_SECONDARY, va="center", ha="left")
+            ax.text(x + (3.2 if x == 0 else 1.6), y, f"{x:.1f}%  ({h}/{n})",
+                    fontsize=8.5, color=INK_SECONDARY, va="center", ha="left")
 
     ax.set_yticks(list(ys))
     ax.set_yticklabels([LENGTH_LABEL[lv] for lv in LENGTHS],
                        fontsize=9, color=INK_SECONDARY)
     ax.set_ylim(-0.7, len(LENGTHS) - 0.3)
     ax.invert_yaxis()
-    ax.set_xlim(0, 72)
+    ax.set_xlim(0, 66)
     ax.set_xlabel("차단율 (%)  ·  유해 프롬프트 36개 중", fontsize=9, color=INK_SECONDARY)
     ax.set_title("A   희귀도 × 길이별 차단율", fontsize=11, color=INK_PRIMARY,
                  pad=14, loc="left", fontweight="bold")
@@ -152,8 +153,20 @@ def panel_scores(ax, prompts, safety) -> None:
                                   .withStroke(linewidth=5.2, foreground=SURFACE)])
     panel_scores.medians = med
 
+    # 중앙값 수치를 붙인다. 로그 축에서 세로선 위치만으로는 값을 못 읽는다.
+    # 점 구름과 겹치지 않도록 각 행의 바깥 여백으로 밀어낸다.
+    #   일반(위 시리즈) 라벨은 세로선 위, 희귀(아래 시리즈) 라벨은 아래.
+    # 배율 주석을 그림 안에 넣었더니 화살표가 행 사이를 가로지르며 다른 라벨과
+    # 겹쳤다. 그 문구는 패널 부제로 올렸다.
+    for (rar, _, _), off, dy, va in zip(RARITY, (+DODGE, -DODGE),
+                                        (+0.21, -0.21), ("top", "bottom")):
+        for i, lv in enumerate(LENGTHS):
+            m = med[(lv, rar)]
+            ax.text(m, i + off + dy, f"{m:.4f}", fontsize=7.8,
+                    color=INK_SECONDARY, ha="center", va=va)
+
     ax.axvline(DECISION_THRESHOLD, color=INK_MUTED, lw=1.2, ls=(0, (4, 3)), zorder=2)
-    ax.text(DECISION_THRESHOLD * 1.12, -0.62, "판정 임계값 0.5", fontsize=8.5,
+    ax.text(DECISION_THRESHOLD * 1.15, -0.78, "판정 임계값 0.5", fontsize=8.5,
             color=INK_MUTED, va="center", ha="left")
 
     ax.set_xscale("log")
@@ -167,12 +180,16 @@ def panel_scores(ax, prompts, safety) -> None:
     ax.set_yticks(range(len(LENGTHS)))
     ax.set_yticklabels([LENGTH_LABEL[lv] for lv in LENGTHS],
                        fontsize=9, color=INK_SECONDARY)
-    ax.set_ylim(-0.7, len(LENGTHS) - 0.3)
+    # 라벨을 행 바깥으로 밀었으므로 위아래 여백을 그만큼 넓힌다.
+    ax.set_ylim(-0.86, len(LENGTHS) - 0.14)
     ax.invert_yaxis()
     ax.set_xlabel("unsafe_score  (로그 축)", fontsize=9, color=INK_SECONDARY)
     ax.set_title("B   판정 점수 분포", fontsize=11, color=INK_PRIMARY,
                  pad=14, loc="left", fontweight="bold")
-    ax.text(0, 1.012, "임계값 오른쪽만 차단 · 굵은 세로선은 중앙값",
+    ratio = med[("short", "common")] / med[("short", "rare")]
+    ax.text(0, 1.012,
+            f"굵은 세로선은 중앙값 — short 에서 {med[('short','common')]:.4f} vs "
+            f"{med[('short','rare')]:.4f} ({ratio:.0f}배)",
             transform=ax.transAxes, fontsize=8.5, color=INK_SECONDARY, va="bottom")
     tidy_axes(ax, hide=("top", "right", "left"))
     ax.grid(False)
