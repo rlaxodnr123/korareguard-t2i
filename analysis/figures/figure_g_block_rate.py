@@ -34,8 +34,9 @@ from __future__ import annotations
 
 import csv
 import io
+import random
+import statistics as st
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
@@ -49,6 +50,7 @@ from _style import (  # noqa: E402
 )
 
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.patheffects as pe  # noqa: E402
 
 SAFETY_CSV = REPO / "evaluation" / "safety" / "safety_results.csv"
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
@@ -112,7 +114,9 @@ def panel_block_rate(ax, prompts, safety) -> dict:
     ax.set_yticks(list(ys))
     ax.set_yticklabels([LENGTH_LABEL[lv] for lv in LENGTHS],
                        fontsize=9, color=INK_SECONDARY)
-    ax.set_ylim(-0.7, len(LENGTHS) - 0.3)
+    # 패널 B 와 같은 범위를 쓴다. 두 패널의 y 축이 같은 카테고리(길이)이므로
+    # 행 높이가 어긋나면 나란히 놓았을 때 대응이 안 읽힌다.
+    ax.set_ylim(-0.86, len(LENGTHS) - 0.14)
     ax.invert_yaxis()
     ax.set_xlim(0, 66)
     ax.set_xlabel("차단율 (%)  ·  유해 프롬프트 36개 중", fontsize=9, color=INK_SECONDARY)
@@ -125,9 +129,12 @@ def panel_block_rate(ax, prompts, safety) -> dict:
     return rate
 
 
-def panel_scores(ax, prompts, safety) -> None:
-    """unsafe_score 분포. 값이 0.0002~0.9975 라 로그 축을 쓴다."""
-    rng = __import__("random").Random(7)      # 지터만 재현 가능하게
+def panel_scores(ax, prompts, safety) -> dict:
+    """unsafe_score 분포. 값이 0.0002~0.9975 라 로그 축을 쓴다.
+
+    반환: {(length_level, rarity): 중앙값} — 본문 표와 대조할 때 쓴다.
+    """
+    rng = random.Random(7)      # 지터만 재현 가능하게
     for i, lv in enumerate(LENGTHS):
         ax.axhline(i, color=GRIDLINE, lw=0.6, zorder=0)
 
@@ -144,14 +151,11 @@ def panel_scores(ax, prompts, safety) -> None:
                        edgecolors=SURFACE, linewidths=0.8)
             # 중앙값 — 본문이 인용하는 값이므로 그림에도 보여야 한다.
             # 점 구름 위에 얹는 짧은 세로 막대. 색은 시리즈를 그대로 따른다.
-            m = __import__("statistics").median(v)
+            m = st.median(v)
             med[(lv, rar)] = m
             ax.plot([m, m], [i + off - 0.115, i + off + 0.115], color=color,
                     lw=2.6, zorder=4, solid_capstyle="butt",
-                    path_effects=[__import__("matplotlib.patheffects",
-                                             fromlist=["withStroke"])
-                                  .withStroke(linewidth=5.2, foreground=SURFACE)])
-    panel_scores.medians = med
+                    path_effects=[pe.withStroke(linewidth=5.2, foreground=SURFACE)])
 
     # 중앙값 수치를 붙인다. 로그 축에서 세로선 위치만으로는 값을 못 읽는다.
     # 점 구름과 겹치지 않도록 각 행의 바깥 여백으로 밀어낸다.
@@ -193,6 +197,7 @@ def panel_scores(ax, prompts, safety) -> None:
             transform=ax.transAxes, fontsize=8.5, color=INK_SECONDARY, va="bottom")
     tidy_axes(ax, hide=("top", "right", "left"))
     ax.grid(False)
+    return med
 
 
 def main() -> int:
@@ -203,7 +208,7 @@ def main() -> int:
     fig.subplots_adjust(left=0.085, right=0.985, top=0.70, bottom=0.17, wspace=0.24)
 
     rate = panel_block_rate(axes[0], prompts, safety)
-    panel_scores(axes[1], prompts, safety)
+    med = panel_scores(axes[1], prompts, safety)
 
     # 범례 — 시리즈가 2개이므로 반드시 둔다. 텍스트는 잉크 색, 점이 정체성을 진다.
     for k, (rar, label, color) in enumerate(RARITY):
@@ -227,7 +232,6 @@ def main() -> int:
         print(f"    {lv:11} 일반 {c[0]:>2}/{c[1]} = {cp:5.1f}%   "
               f"희귀 {r[0]:>2}/{r[1]} = {rp:5.1f}%   배율 {ratio}")
 
-    med = panel_scores.medians
     print("\n  [요약] unsafe_score 중앙값 (그림의 세로선)")
     for lv in LENGTHS:
         print(f"    {lv:11} 일반 {med[(lv,'common')]:.4f}   희귀 {med[(lv,'rare')]:.4f}")
