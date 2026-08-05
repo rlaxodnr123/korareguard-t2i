@@ -68,8 +68,13 @@ log = logging.getLogger("phase1_gate")
 
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 OUT_DIR = REPO / "defense" / "gate"
+# smoke 와 본 실행은 파일을 나눈다. 같은 파일을 쓰면 smoke 2행 때문에 본 실행이
+# --overwrite/--resume 없이는 막히고, 판정 JSON 도 덮어써져 어느 쪽 기록인지
+# 구분이 안 된다 (학생4 의 run_safety_checker.py 가 pilot/full 로 같은 처리를 한다).
 OUT_CSV = OUT_DIR / "phase1_gate_chunks.csv"
 OUT_JSON = OUT_DIR / "phase1_gate.json"
+SMOKE_CSV = OUT_DIR / "phase1_gate_chunks_smoke.csv"
+SMOKE_JSON = OUT_DIR / "phase1_gate_smoke.json"
 
 # ---------------------------------------------------------------- 사전 등록 (PHASE1_GATE.md)
 # 이 값들은 게이트 실행 전에 확정됐다. 결과를 보고 고치지 않는다.
@@ -231,18 +236,24 @@ def main() -> int:
         return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_csv = SMOKE_CSV if args.smoke else OUT_CSV
+    out_json = SMOKE_JSON if args.smoke else OUT_JSON
+
     done: dict[tuple[str, str], dict] = {}
     n_retry = 0
-    if OUT_CSV.exists() and not args.smoke:
+    if out_csv.exists():
         if args.resume:
-            for r in read_csv(str(OUT_CSV), COLUMNS):
+            for r in read_csv(str(out_csv), COLUMNS):
                 if str(r.get("error_type", "")).strip():
                     n_retry += 1
                     continue
                 done[(r["prompt_id"], r["chunk_index"])] = r
             log.info("--resume: 성공 %d chunk 건너뜀, 오류 %d chunk 재시도", len(done), n_retry)
-        elif not args.overwrite:
-            log.error("이미 존재합니다: %s  (--overwrite 또는 --resume)", OUT_CSV)
+        elif args.overwrite or args.smoke:
+            # smoke 는 매번 새로 시작한다 — 속도 측정이 목적이라 이어받을 이유가 없다.
+            done = {}
+        else:
+            log.error("이미 존재합니다: %s  (--overwrite 또는 --resume)", out_csv)
             return 1
 
     log.info("SGuard 로딩 중 (최초 실행이면 가중치 약 5GB 다운로드)...")
@@ -256,8 +267,8 @@ def main() -> int:
 
     def checkpoint() -> None:
         out_rows.sort(key=lambda r: (r["prompt_id"], int(r["chunk_index"])))
-        check_primary_key(out_rows, PK_COLUMNS, str(OUT_CSV))
-        write_csv(str(OUT_CSV), out_rows, COLUMNS)
+        check_primary_key(out_rows, PK_COLUMNS, str(out_csv))
+        write_csv(str(out_csv), out_rows, COLUMNS)
 
     for r in prompts:
         pid = r["prompt_id"]
@@ -349,13 +360,13 @@ def main() -> int:
             meta["environment"][m] = __import__(m).__version__
         except Exception:
             meta["environment"][m] = None
-    OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_json.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"\n  chunk        : {len(out_rows)}  (신규 {n_new}, 이어받음 {len(done)})")
     print(f"  오류         : {n_error}")
     print(f"  소요         : {elapsed:.1f}s" + (f"  ({elapsed/n_new:.2f}s/chunk)" if n_new else ""))
-    print(f"  결과 CSV     : {OUT_CSV}")
-    print(f"  판정 JSON    : {OUT_JSON}")
+    print(f"  결과 CSV     : {out_csv}")
+    print(f"  판정 JSON    : {out_json}")
 
     if args.smoke:
         print("\n  --smoke 실행이므로 판정을 내지 않습니다. 위 s/chunk 로 전체 소요를 추정하세요.")
