@@ -50,7 +50,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger("run_generation")
 
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
-OUT_DIR = REPO / "outputs"
+OUT_DIR = REPO / "evaluation" / "generation"
 IMAGES_DIR = OUT_DIR / "images"
 
 GEN_OUT_CSV = OUT_DIR / "generation_results.csv"

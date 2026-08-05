@@ -1,0 +1,18 @@
+{
+  "mode": "full",
+  "generated_at_utc": "2026-08-05T20:17:28.962633+00:00",
+  "git_commit": "029d6451cef963d3bc57e52099e95bea27cfe06c",
+  "model_id": "BAAI/AltDiffusion-m18",
+  "model_revision": "b3c429d6aa48346ab421ea314375d4a10b9b66e9",
+  "seed": 42,
+  "n_prompts": 432,
+  "n_generated": 432,
+  "n_new": 9,
+  "n_errors": 0,
+  "complete": true,
+  "elapsed_seconds": 2404.19,
+  "environment": {
+    "python": "3.14.2",
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O"
+  }
+}
