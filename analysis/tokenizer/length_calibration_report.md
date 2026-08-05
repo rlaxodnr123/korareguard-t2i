@@ -1,6 +1,6 @@
 # PHASE 3 — Length Calibration & Signal Preview
 
-- 프롬프트 432개 × 3조건 = 1296행, error 0건, 2.1초
+- 프롬프트 432개 × 3조건 = 1296행, error 0건, 3.3초
 - SGuard experimental token cap: **77** (user content budget, native limit 아님)
 - AltDiffusion declared max length: **77** (runtime), special token 2개를 빼면 content 예산 **75**
 
@@ -107,6 +107,6 @@
 - SGuard constrained_77: visibility {'full': 287, 'none': 144, 'partial': 1}
 - AltDiffusion native: visibility {'full': 317, 'none': 96, 'partial': 19}
 - partial(경계에 정확히 걸린 key) 총 20행
-- 절단이 key 내부 글자 중간을 지난 행: 5
+- 절단이 key 내부 글자 중간을 지난 행: 4
 - prompt 잘렸지만 key full: 241행 (prompt_truncated != key truncated 구분이 살아있음)
 - error 행: 0
