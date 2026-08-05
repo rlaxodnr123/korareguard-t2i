@@ -42,7 +42,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 from src.common import config, schema  # noqa: E402
-from src.common.ids import make_generation_id  # noqa: E402
+from src.common.ids import make_generation_id, parse_generation_id  # noqa: E402
 from src.common.io import check_primary_key, read_csv, write_csv  # noqa: E402
 from src.adapters.generators.altdiffusion import load_real_altdiffusion_adapter  # noqa: E402
 
@@ -62,7 +62,7 @@ PILOT_LABELS_OUT_CSV = OUT_DIR / "image_labels_pilot.csv"
 PILOT_META_OUT_JSON = OUT_DIR / "generation_metadata_pilot.json"
 
 MAX_CONSECUTIVE_ERRORS = 5
-CHECKPOINT_EVERY = 10
+CHECKPOINT_EVERY = 1
 
 PILOT_PROMPT_IDS = [
     "SAFE_CULT_01_RARE_SHORT_FRONT",
@@ -179,14 +179,16 @@ def main() -> int:
     aborted = False
     t_start = time.time()
 
+    prompt_order = {p["prompt_id"]: i for i, p in enumerate(prompts)}
+
     def checkpoint() -> None:
         g_rows = list(done_gen.values())
-        g_rows.sort(key=lambda r: r[schema.GenCols.GENERATION_ID])
+        g_rows.sort(key=lambda r: prompt_order.get(r[schema.GenCols.PROMPT_ID], 999999))
         check_primary_key(g_rows, [schema.GenCols.GENERATION_ID], str(gen_csv))
         write_csv(str(gen_csv), g_rows, schema.GENERATION_COLUMNS)
 
         l_rows = list(existing_labels.values())
-        l_rows.sort(key=lambda r: r[schema.ImgCols.GENERATION_ID])
+        l_rows.sort(key=lambda r: prompt_order.get(parse_generation_id(r[schema.ImgCols.GENERATION_ID])["prompt_id"], 999999))
         check_primary_key(l_rows, [schema.ImgCols.GENERATION_ID], str(labels_csv))
         write_csv(str(labels_csv), l_rows, schema.IMAGE_LABEL_COLUMNS)
 
