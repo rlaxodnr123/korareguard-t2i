@@ -197,23 +197,14 @@ def parse_sguard_output(raw: str) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------- 실모델 로더 (lazy)
-def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
-    """실제 HF 모델용 로더. transformers 는 여기서만 lazy import.
+def _build_real_tokenizer(hf_tok):
+    """HF tokenizer 를 SGuardTokenizerBackend 로 감싼다.
 
-    device 미지정 시 CUDA 가능 여부로 자동 결정 — "cuda" 하드코딩이면 GPU 없는
-    로컬(CPU-only torch)에서 로드 자체가 AssertionError 로 막힌다.
-    PILOT GATE 0a 에서 이 로더로 빈-response 동작을 먼저 검증한 뒤 대량 실행할 것.
+    load_real_sguard_adapter(모델 포함) 와 load_sguard_tokenizer_adapter(토크나이저만)
+    가 이 하나를 공유한다 — 두 경로가 갈라지면 "분석이 본 토큰"과 "모델이 먹은 토큰"이
+    어긋나고, 그건 이 저장소에서 이미 한 번 112건 불일치로 겪은 실패 유형이다
+    (analysis/tokenizer/adapter_agreement_report.md).
     """
-    import torch  # lazy
-    from transformers import AutoModelForCausalLM, AutoTokenizer  # lazy
-
-    if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    hf_tok = AutoTokenizer.from_pretrained(
-        config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION)
-    hf_model = AutoModelForCausalLM.from_pretrained(
-        config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION).to(device)
 
     class _RealTok:
         tokenizer_class = type(hf_tok).__name__
@@ -266,6 +257,43 @@ def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
         def count_tokens(self, formatted_text):
             return len(hf_tok(formatted_text, add_special_tokens=False)["input_ids"])
 
+    return _RealTok()
+
+
+def load_sguard_tokenizer_adapter() -> SGuardAdapter:
+    """토크나이저만 로드한 어댑터 (model=None). 가중치 5GB 를 받지 않는다.
+
+    용도: chunk 경계 조립, 토큰 수 계산, prepare_input 검증처럼 추론이 필요 없는 작업.
+    predict() 를 부르면 RuntimeError 로 막힌다 — 추론이 필요하면
+    load_real_sguard_adapter() 를 쓴다.
+
+    GPU 없는 로컬에서 방어 파이프라인의 토큰 처리 경로를 검증하기 위한 것이다.
+    """
+    from transformers import AutoTokenizer  # lazy
+
+    hf_tok = AutoTokenizer.from_pretrained(
+        config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION)
+    return SGuardAdapter(_build_real_tokenizer(hf_tok), model=None)
+
+
+def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
+    """실제 HF 모델용 로더. transformers 는 여기서만 lazy import.
+
+    device 미지정 시 CUDA 가능 여부로 자동 결정 — "cuda" 하드코딩이면 GPU 없는
+    로컬(CPU-only torch)에서 로드 자체가 AssertionError 로 막힌다.
+    PILOT GATE 0a 에서 이 로더로 빈-response 동작을 먼저 검증한 뒤 대량 실행할 것.
+    """
+    import torch  # lazy
+    from transformers import AutoModelForCausalLM, AutoTokenizer  # lazy
+
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    hf_tok = AutoTokenizer.from_pretrained(
+        config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION)
+    hf_model = AutoModelForCausalLM.from_pretrained(
+        config.SGUARD_MODEL_ID, revision=config.SGUARD_REVISION).to(device)
+
     class _RealModel:
         def generate(self, input_ids):
             import torch
@@ -312,4 +340,4 @@ def load_real_sguard_adapter(device: str | None = None) -> SGuardAdapter:
                 result[category] = probs[1].item()
             return result or None
 
-    return SGuardAdapter(_RealTok(), _RealModel())
+    return SGuardAdapter(_build_real_tokenizer(hf_tok), _RealModel())
