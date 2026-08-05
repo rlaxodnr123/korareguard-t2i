@@ -131,8 +131,16 @@ def load_real_altdiffusion_adapter(
     )
     from transformers import XLMRobertaTokenizer
 
+    import os
+    if input_ids_dump_path and os.path.exists(input_ids_dump_path):
+        try:
+            os.remove(input_ids_dump_path)
+        except Exception:
+            pass
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
     mid, rev = config.ALTDIFF_MODEL_ID, config.ALTDIFF_REVISION
     pipe = AltDiffusionPipeline(
