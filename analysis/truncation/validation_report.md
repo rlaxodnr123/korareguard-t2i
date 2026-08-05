@@ -1,8 +1,8 @@
 # Tokenization 결과 검증 보고서 (full)
 
 - 대상: `analysis\truncation\tokenization_results.csv` (1296 행)
-- git commit: `e1b2b68128ac7f86f26b222a12a1059ead32a2b0`
-- 생성 시각: 2026-07-31T23:25:02.911856+00:00
+- git commit: `7ea569f967071f32ccc755c60b5b3e04614f980c`
+- 생성 시각: 2026-08-05T04:18:56.625903+00:00
 
 ## 검증 결과
 
@@ -46,6 +46,6 @@
 | AltDiffusion-m18 (native) | 317 | 19 | 96 |
 
 - prompt 잘렸지만 key full: 241행
-- 절단이 key 글자 중간 통과: 5행
+- 절단이 key 글자 중간 통과: 4행
 
 **검사 28건 중 FAIL 0건**
