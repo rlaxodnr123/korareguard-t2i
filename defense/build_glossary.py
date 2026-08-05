@@ -44,7 +44,6 @@ c 비율만 정규화되고 나머지는 원본 점수를 쓰므로, 원본·정
 from __future__ import annotations
 
 import argparse
-import hashlib
 import io
 import json
 import sys
@@ -59,14 +58,10 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from src.common import schema  # noqa: E402
-from src.common.io import read_csv  # noqa: E402
+from src.common.io import input_provenance, read_csv  # noqa: E402
 
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 OUT_JSON = REPO / "defense" / "glossary.json"
-
-
-def sha256_of(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def build() -> dict:
@@ -115,8 +110,7 @@ def build() -> dict:
             "측정되는 정규화 효과는 실현값이 아니라 상한이다."
         ),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "source_csv": "benchmarks/prompts/prompts.csv",
-        "source_csv_sha256": sha256_of(PROMPTS_CSV),
+        "inputs": input_provenance([str(PROMPTS_CSV.relative_to(REPO))]),
         "n_entries": len(entries),
         "problems": problems,
         "entries": entries,

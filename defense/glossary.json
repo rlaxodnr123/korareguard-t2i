@@ -2,9 +2,14 @@
   "purpose": "semantic_normalizer 가 쓰는 희귀 표현 → 표준 설명 사전",
   "gloss_source": "prompts.csv 의 동일 concept_id 일반 표현. 작성자가 새로 쓴 문장이 아니며, 학생1 이 C2 기준으로 의미 동일성을 검증한 쌍이다 (analysis/truncation/benchmark_variant_comparison.md, 24/24).",
   "limitation": "사전이 평가 대상 벤치마크에서 유도되므로 표현 커버리지가 100% 다. 측정되는 정규화 효과는 실현값이 아니라 상한이다.",
-  "generated_at_utc": "2026-08-05T03:21:20.179837+00:00",
-  "source_csv": "benchmarks/prompts/prompts.csv",
-  "source_csv_sha256": "3c8afc1b0010ccdbd07156d8a0c1d733dcbd26c7eec91b806066cca6229a5b6c",
+  "generated_at_utc": "2026-08-05T03:59:11.467212+00:00",
+  "inputs": {
+    "prompts.csv": {
+      "path": "benchmarks/prompts/prompts.csv",
+      "sha256": "3c8afc1b0010ccdbd07156d8a0c1d733dcbd26c7eec91b806066cca6229a5b6c",
+      "bytes": 274241
+    }
+  },
   "n_entries": 24,
   "problems": [],
   "entries": [

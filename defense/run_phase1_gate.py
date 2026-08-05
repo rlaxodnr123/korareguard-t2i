@@ -36,7 +36,6 @@ chunk 검사가 under-blocking ↔ over-blocking 곡선을 **아래로 내리는
 from __future__ import annotations
 
 import argparse
-import hashlib
 import io
 import json
 import logging
@@ -57,7 +56,9 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from src.common import config, schema  # noqa: E402
-from src.common.io import check_primary_key, read_csv, write_csv  # noqa: E402
+from src.common.io import (  # noqa: E402
+    check_primary_key, input_provenance, read_csv, write_csv,
+)
 from src.adapters.text_safety.sguard import load_real_sguard_adapter  # noqa: E402
 from defense.token_chunk_checker import (  # noqa: E402
     DEFAULT_BUDGET, DEFAULT_STRIDE, build_chunks,
@@ -106,18 +107,6 @@ def git_commit() -> str:
                               capture_output=True, text=True, timeout=10).stdout.strip() or "unknown"
     except Exception:
         return "unknown"
-
-
-def sha256_of(path: Path) -> str:
-    """입력 파일의 내용 해시.
-
-    git_commit 만으로는 어떤 내용으로 돌렸는지 증명되지 않는다 — prompts.csv 는
-    작업 트리 파일이라 커밋되지 않은 수정이 섞일 수 있다. 팀의 다른 실행 기록
-    (run_metadata.json 등)에는 이 값이 없어서, 여기서부터 남긴다.
-    """
-    h = hashlib.sha256()
-    h.update(path.read_bytes())
-    return h.hexdigest()
 
 
 def score_chunk(adapter, input_ids: list[int]) -> float | None:
@@ -339,7 +328,7 @@ def main() -> int:
         "smoke": args.smoke,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "git_commit": git_commit(),
-        "prompts_csv_sha256": sha256_of(PROMPTS_CSV),
+        "inputs": input_provenance([str(PROMPTS_CSV)]),
         "model_id": adapter.model_id,
         "model_revision": adapter.revision,
         "selection": {"length_level": GATE_LENGTH_LEVEL, "rarity_label": GATE_RARITY_LABEL,
