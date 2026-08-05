@@ -5590,8 +5590,8 @@
     "common × 장문": {
       "baseline": 40.278,
       "normalization_only": 40.278,
-      "chunk_only": 43.056,
-      "combined": 43.056
+      "chunk_only": 62.5,
+      "combined": 62.5
     },
     "rare × 단문": {
       "baseline": 88.889,
@@ -5602,8 +5602,8 @@
     "rare × 장문": {
       "baseline": 76.389,
       "normalization_only": 44.444,
-      "chunk_only": 84.722,
-      "combined": 41.667
+      "chunk_only": 87.5,
+      "combined": 54.167
     }
   },
   "cost": {
@@ -5627,6 +5627,129 @@
       "mean_calls": 6.562,
       "vs_baseline": 6.562
     }
+  },
+  "cascade": {
+    "condition": "normalization_only",
+    "rule": "max",
+    "over_budget": 5.6,
+    "length_gate": [
+      {
+        "calls": 648,
+        "calls_per_prompt": 1.5,
+        "under": 65.741,
+        "min_tokens": 0
+      },
+      {
+        "calls": 591,
+        "calls_per_prompt": 1.368,
+        "under": 69.907,
+        "min_tokens": 24
+      },
+      {
+        "calls": 576,
+        "calls_per_prompt": 1.333,
+        "under": 73.148,
+        "min_tokens": 40
+      },
+      {
+        "calls": 576,
+        "calls_per_prompt": 1.333,
+        "under": 73.148,
+        "min_tokens": 60
+      },
+      {
+        "calls": 576,
+        "calls_per_prompt": 1.333,
+        "under": 73.148,
+        "min_tokens": 77
+      },
+      {
+        "calls": 576,
+        "calls_per_prompt": 1.333,
+        "under": 73.148,
+        "min_tokens": 100
+      },
+      {
+        "calls": 528,
+        "calls_per_prompt": 1.222,
+        "under": 72.685,
+        "min_tokens": 122
+      },
+      {
+        "calls": 504,
+        "calls_per_prompt": 1.167,
+        "under": 73.148,
+        "min_tokens": 200
+      },
+      {
+        "calls": 504,
+        "calls_per_prompt": 1.167,
+        "under": 73.148,
+        "min_tokens": 300
+      },
+      {
+        "calls": 468,
+        "calls_per_prompt": 1.083,
+        "under": 73.148,
+        "min_tokens": 422
+      },
+      {
+        "calls": 432,
+        "calls_per_prompt": 1.0,
+        "under": 74.537,
+        "min_tokens": 10000
+      }
+    ],
+    "early_block": [
+      {
+        "calls": 648,
+        "calls_per_prompt": 1.5,
+        "under": 65.741,
+        "high": 1.01
+      },
+      {
+        "calls": 638,
+        "calls_per_prompt": 1.477,
+        "under": 65.741,
+        "high": 0.5
+      },
+      {
+        "calls": 631,
+        "calls_per_prompt": 1.461,
+        "under": 65.741,
+        "high": 0.2
+      },
+      {
+        "calls": 625,
+        "calls_per_prompt": 1.447,
+        "under": 65.741,
+        "high": 0.1
+      },
+      {
+        "calls": 621,
+        "calls_per_prompt": 1.438,
+        "under": 66.667,
+        "high": 0.05
+      },
+      {
+        "calls": 617,
+        "calls_per_prompt": 1.428,
+        "under": 67.13,
+        "high": 0.02
+      },
+      {
+        "calls": 599,
+        "calls_per_prompt": 1.387,
+        "under": 64.352,
+        "high": 0.01
+      },
+      {
+        "calls": 535,
+        "calls_per_prompt": 1.238,
+        "under": 67.13,
+        "high": 0.005
+      }
+    ]
   },
   "coverage": {
     "0.0": {

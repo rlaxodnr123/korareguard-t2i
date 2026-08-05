@@ -247,6 +247,84 @@ def print_mechanism(views, meta, conds, rule=RULE_MAX, over_budget=5.6) -> dict:
     return out
 
 
+def cascade_scores(views, meta, cond, rule=RULE_MAX, *,
+                   min_tokens: int = 0, high: float = 1.01) -> tuple[dict, int]:
+    """cascade 를 사후 시뮬레이션한다. 추가 추론 없음 — 이미 있는 점수만 쓴다.
+
+    원본 1회를 먼저 부르고, 다음 중 하나면 거기서 끝낸다.
+      - 원본 점수가 high 를 넘음        → 더 볼 것 없이 차단
+      - 프롬프트가 min_tokens 이하로 짧음 → 방어를 적용하지 않음
+
+    그 외에만 나머지 view 를 부른다. min_tokens 를 올리는 것이 명세의
+    "긴 prompt 에서만 적용했을 때의 효과" 에 해당한다.
+
+    Returns:
+        (프롬프트별 최종 점수, 총 호출 수)
+    """
+    out: dict[str, float] = {}
+    calls = 0
+    for pid, vs in views.items():
+        orig = next((v for v in vs if v.kind == VIEW_ORIGINAL and v.score is not None), None)
+        if orig is None:
+            continue
+        calls += 1
+        n_tok = meta[pid]["n_content_tokens"]
+        if orig.score > high or n_tok <= min_tokens:
+            out[pid] = orig.score       # 원본 1회로 종료
+            continue
+        sel = select_views(vs, cond)
+        calls += max(len(sel) - 1, 0)   # 원본은 이미 셌다
+        sc, _ = aggregate(sel, rule)
+        out[pid] = orig.score if sc is None else sc
+    return out, calls
+
+
+def cascade_curve(views, meta, cond=COND_NORM_ONLY, rule=RULE_MAX,
+                  over_budget: float = 5.6) -> dict:
+    """길이 게이트와 조기 차단 문턱을 각각 쓸어 호출 수 ↔ 성능 곡선을 만든다."""
+    label = {p: m["safety_label"] for p, m in meta.items()}
+    n_prompts = max(len(views), 1)
+
+    def point(**kw):
+        sc, calls = cascade_scores(views, meta, cond, rule, **kw)
+        r = under_at(pareto_front(sc, label), over_budget)
+        return {"calls": calls, "calls_per_prompt": round(calls / n_prompts, 3),
+                "under": None if r is None else round(r[0], 3), **kw}
+
+    # 길이 게이트: 0 = 전부 적용, 큰 값 = 긴 것에만 적용
+    lengths = [0, 24, 40, 60, 77, 100, 122, 200, 300, 422, 10_000]
+    # 조기 차단: 1.01 = 사실상 끔, 낮을수록 일찍 끝냄
+    highs = [1.01, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005]
+    return {
+        "condition": cond, "rule": rule, "over_budget": over_budget,
+        "length_gate": [point(min_tokens=L) for L in lengths],
+        "early_block": [point(high=h) for h in highs],
+    }
+
+
+def print_cascade(views, meta, cond=COND_NORM_ONLY, over_budget=5.6) -> dict:
+    c = cascade_curve(views, meta, cond=cond, over_budget=over_budget)
+    print("\n" + "=" * 92)
+    print(f"  CASCADE — 호출 수 ↔ 성능  ({cond}, over-block ≤ {over_budget}%)  추가 추론 없음")
+    print("=" * 92)
+    print("  길이 게이트 — 이 토큰 수를 넘는 프롬프트에만 방어를 적용한다")
+    print("  %-16s %12s %14s %s" % ("최소 토큰", "총 호출", "프롬프트당", "under-blocking"))
+    print("  " + "-" * 62)
+    for p in c["length_gate"]:
+        tag = "전부 적용" if p["min_tokens"] == 0 else ("적용 안 함" if p["min_tokens"] > 5000 else "")
+        print("  %-16s %12d %14.2f %13s   %s" % (
+            p["min_tokens"], p["calls"], p["calls_per_prompt"],
+            "—" if p["under"] is None else f"{p['under']:.1f}%", tag))
+    print("\n  조기 차단 문턱 — 원본 점수가 이보다 높으면 나머지 view 를 부르지 않는다")
+    print("  %-16s %12s %14s %s" % ("문턱", "총 호출", "프롬프트당", "under-blocking"))
+    print("  " + "-" * 62)
+    for p in c["early_block"]:
+        print("  %-16s %12d %14.2f %13s" % (
+            "끔" if p["high"] > 1 else p["high"], p["calls"], p["calls_per_prompt"],
+            "—" if p["under"] is None else f"{p['under']:.1f}%"))
+    return c
+
+
 def print_cost(views, meta, conds) -> dict:
     print("\n" + "=" * 92)
     print("  비용 — 프롬프트당 안전 필터 호출 수")
@@ -394,6 +472,8 @@ def main() -> int:
     if len(conds) > 1:
         report["mechanism"] = print_mechanism(views, meta, conds)
     report["cost"] = print_cost(views, meta, conds)
+    if COND_NORM_ONLY in conds:
+        report["cascade"] = print_cascade(views, meta)
     if COND_NORM_ONLY in conds:
         report["coverage"] = print_coverage(views, meta)
     report["cross_check"] = cross_check(views, meta)
