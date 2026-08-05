@@ -110,9 +110,14 @@ def check_vocab(rep: Report, rows: list[dict], col: str,
     if not rows or col not in rows[0]:
         return
     vals = Counter(str(r[col]).strip().lower() for r in rows)
+    missing = vals.pop("", 0)
     bad = {v: c for v, c in vals.items() if v not in allowed}
+    
     rep.check(f"{label}.{col} 값이 {sorted(allowed)} 안에 있음", not bad,
               f"허용 밖: {preview(bad)}" if bad else f"{dict(vals)}")
+    if missing > 0:
+         rep.check(f"{label}.{col} 이(가) 모두 채워져 있음", False,
+                   f"{missing}건 비어 있음")
 
 
 def check_boolean(rep: Report, rows: list[dict], col: str, label: str) -> None:
@@ -123,10 +128,16 @@ def check_boolean(rep: Report, rows: list[dict], col: str, label: str) -> None:
     """
     if not rows or col not in rows[0]:
         return
-    vals = Counter(str(r[col]).strip().lower() for r in rows if str(r[col]).strip())
+    vals = Counter(str(r[col]).strip().lower() for r in rows)
+    missing = vals.pop("", 0)
     bad = {v: c for v, c in vals.items() if v not in TRUE_WORDS | FALSE_WORDS}
+    
     rep.check(f"{label}.{col} 이 참/거짓 값", not bad,
               f"해석 불가: {preview(bad)}" if bad else "")
+    if missing > 0:
+         rep.check(f"{label}.{col} 이(가) 모두 채워져 있음", False,
+                   f"{missing}건 비어 있음")
+                   
     forms = set(vals) & (TRUE_WORDS | FALSE_WORDS)
     mixed = len({v for v in forms if v in TRUE_WORDS}) > 1 or \
             len({v for v in forms if v in FALSE_WORDS}) > 1
@@ -214,18 +225,19 @@ def validate_labels(rep: Report, rows: list[dict], gen_ids: Optional[set[str]]) 
                  f"라벨 없는 생성물 {len(missing)}건: {preview(missing)}" if missing else "")
 
     check_boolean(rep, rows, schema.ImgCols.CONCEPT_PRESENT, "image_labels")
+    check_boolean(rep, rows, schema.ImgCols.CONCEPT_PRESENT_A1, "image_labels")
+    check_boolean(rep, rows, schema.ImgCols.CONCEPT_PRESENT_A2, "image_labels")
+    check_boolean(rep, rows, schema.ImgCols.CONCEPT_PRESENT_FINAL, "image_labels")
+
     check_vocab(rep, rows, schema.ImgCols.IMAGE_SAFETY_LABEL,
                 {schema.SAFE, schema.UNSAFE}, "image_labels")
+    check_vocab(rep, rows, schema.ImgCols.IMAGE_SAFETY_A1,
+                {schema.SAFE, schema.UNSAFE}, "image_labels")
+    check_vocab(rep, rows, schema.ImgCols.IMAGE_SAFETY_A2,
+                {schema.SAFE, schema.UNSAFE}, "image_labels")
+    check_vocab(rep, rows, schema.ImgCols.IMAGE_SAFETY_FINAL,
+                {schema.SAFE, schema.UNSAFE}, "image_labels")
 
-    # 미해결 이슈: 평가 대상은 둘인데 평가자 칸은 한 벌뿐이다.
-    # 무엇을 평가한 값인지 확정되기 전에는 annotator_* / final_label 을 쓰지 않는다.
-    filled = sum(1 for r in rows
-                 if str(r.get(schema.ImgCols.ANNOTATOR_1, "")).strip()
-                 or str(r.get(schema.ImgCols.FINAL_LABEL, "")).strip())
-    if filled:
-        rep.warn("annotator_* / final_label 의 평가 대상이 확정됨", False,
-                 f"{filled}행이 채워져 있으나, 이 값이 concept_present 를 평가한 "
-                 "것인지 image_safety_label 을 평가한 것인지 schema.py 에 정의가 없다")
 
 
 def write_templates(outdir: Path) -> None:
