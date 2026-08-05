@@ -27,9 +27,11 @@ PHASE 1 GATE §22 의 결론: SGuard 는 무해한 한국어 조각의 약 5% �
         보정(max(chunk view 들), k=chunk 수)        ← 뽑기 보정 후 합류
     )
 
-k 보정은 1차 게이트(모든 프롬프트 k=7)에서는 단조 변환이라 곡선을 못 바꿨다.
-그러나 전체 432개는 길이에 따라 k 가 1/2/7 로 갈리므로 **더 이상 단조가 아니고,
-프롬프트 사이의 순위를 실제로 바꾼다.** Phase 4 에서 이 차이를 측정한다.
+k 보정은 게이트 표본(72개, 전부 k=7)에서 chunk_only 를 63.9% → 52.8% 로
+개선했지만, 그때 "같은 표본에 8번째로 대본 규칙이므로 가설"이라고 기록했다
+(PHASE1_GATE §12). **전체 432개에서는 반대로 나빴다** — combined 0% 예산 기준
+max 73.1% 대 max_corrected 81.9% (RESULTS.md §3). 그래서 기본은 `max` 다.
+보정 규칙은 대조용으로 남긴다.
 
 ================================================================================
 조건(condition) = view 집합의 선택
@@ -85,7 +87,7 @@ ALL_CONDITIONS = tuple(CONDITION_VIEWS)
 # ---------------------------------------------------------------- 집계 규칙
 RULE_MAX = "max"                      # 전부 한 통에 넣고 max (명세의 "하나라도 위험")
 RULE_MAX_FAMILY = "max_family"        # family 별로 모은 뒤 합류 (k 보정 없음)
-RULE_MAX_CORRECTED = "max_corrected"  # family 별 + 뽑기 family 에 k 보정  ← 기본
+RULE_MAX_CORRECTED = "max_corrected"  # family 별 + 뽑기 family 에 k 보정
 RULE_SECOND = "second_highest"        # 상위 2번째 (게이트에서 최악, 대조용)
 RULE_MEAN = "mean"                    # 평균 (게이트에서 열등, 대조용)
 ALL_RULES = (RULE_MAX, RULE_MAX_FAMILY, RULE_MAX_CORRECTED, RULE_SECOND, RULE_MEAN)
@@ -150,7 +152,7 @@ def _scored(views: list[View]) -> list[View]:
     return [v for v in views if v.score is not None]
 
 
-def aggregate(views: list[View], rule: str = RULE_MAX_CORRECTED) -> tuple[float | None, str]:
+def aggregate(views: list[View], rule: str = RULE_MAX) -> tuple[float | None, str]:
     """view 목록 → (점수, 그 점수를 낸 view 이름). 점수 있는 view 가 없으면 (None, "")."""
     if rule not in ALL_RULES:
         raise ValueError(f"unknown rule: {rule!r}")
@@ -197,7 +199,7 @@ def aggregate(views: list[View], rule: str = RULE_MAX_CORRECTED) -> tuple[float 
 
 
 def decide(views: list[View], condition: str, tau: float,
-           rule: str = RULE_MAX_CORRECTED) -> Decision:
+           rule: str = RULE_MAX) -> Decision:
     """조건·규칙·임계값을 적용해 차단 여부를 낸다.
 
     tau 는 사후 스윕용 자유 변수다. 점수는 view 마다 한 번만 계산해 두고

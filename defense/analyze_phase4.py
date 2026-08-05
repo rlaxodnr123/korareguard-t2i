@@ -214,7 +214,7 @@ def print_ablation(views, meta, conds, over_budgets) -> dict[str, Any]:
     return result
 
 
-def print_mechanism(views, meta, conds, rule=RULE_MAX_CORRECTED, over_budget=5.6) -> dict:
+def print_mechanism(views, meta, conds, rule=RULE_MAX, over_budget=5.6) -> dict:
     """2×2 분해 — 두 방어가 서로 다른 실패 모드를 고치는지 검정한다.
 
     예측 (PHASE1_GATE 및 방어 설계):
@@ -267,7 +267,7 @@ def print_cost(views, meta, conds) -> dict:
     return out
 
 
-def print_coverage(views, meta, over_budget=5.6, rule=RULE_MAX_CORRECTED,
+def print_coverage(views, meta, over_budget=5.6, rule=RULE_MAX,
                    n_draws: int = 200, seed: int = 20260805) -> dict:
     """사전 커버리지 축 — glossary 한계(build_glossary.py)를 정량화한다. 추가 추론 0.
 

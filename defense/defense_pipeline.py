@@ -194,8 +194,8 @@ class DefensePipeline:
     @staticmethod
     def decide(views: list[View], condition: str, tau: float, rule: str | None = None) -> Decision:
         """점수가 채워진 view 로 판정한다. 얇은 위임 — 규칙은 aggregator 가 갖는다."""
-        from defense.decision_aggregator import RULE_MAX_CORRECTED
-        return decide(views, condition, tau, rule or RULE_MAX_CORRECTED)
+        from defense.decision_aggregator import RULE_MAX
+        return decide(views, condition, tau, rule or RULE_MAX)
 
 
 # ================================================================ self-test

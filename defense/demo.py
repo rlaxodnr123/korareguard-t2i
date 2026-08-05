@@ -44,7 +44,7 @@ if str(REPO) not in sys.path:
 
 from src.common.io import read_csv  # noqa: E402
 from defense.decision_aggregator import (  # noqa: E402
-    ALL_CONDITIONS, RULE_MAX, RULE_MAX_CORRECTED, VIEW_CHUNK, VIEW_NORMALIZED,
+    ALL_CONDITIONS, RULE_MAX, VIEW_CHUNK, VIEW_NORMALIZED,
     VIEW_NORM_CHUNK, VIEW_ORIGINAL, select_views,
 )
 from defense.defense_pipeline import DefensePipeline  # noqa: E402
@@ -131,11 +131,11 @@ def show_scored(pipe: DefensePipeline, adapter, prompt: str, key: str,
     print(f"\n  {'조건':<22}{'점수':>9}  {'판정':<8}{'이끈 view':<16}호출")
     print("  " + "-" * 84)
     for c in ALL_CONDITIONS:
-        d = pipe.decide(plan.views, c, tau=tau, rule=RULE_MAX_CORRECTED)
+        d = pipe.decide(plan.views, c, tau=tau, rule=RULE_MAX)
         verdict = "차단" if d.blocked else "통과"
         sc = "판정불가" if d.score is None else f"{d.score:9.4f}"
         print(f"  {c:<22}{sc}  {verdict:<8}{d.driving_view:<16}{d.n_views}")
-    print(f"\n  임계값 τ = {tau}  ·  집계 규칙 = {RULE_MAX_CORRECTED}")
+    print(f"\n  임계값 τ = {tau}  ·  집계 규칙 = {RULE_MAX}")
     print("  τ 는 자유 변수다 — Phase 4 에서 쓸어 곡선으로 비교한다.")
 
 

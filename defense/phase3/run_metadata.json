@@ -1,0 +1,42 @@
+{
+  "phase": 3,
+  "purpose": "view 별 unsafe_score 수집. 판정·집계·τ 는 Phase 4 에서 사후 계산.",
+  "smoke": false,
+  "generated_at_utc": "2026-08-05T20:07:57.738732+00:00",
+  "git_commit": "unknown",
+  "inputs": {
+    "prompts.csv": {
+      "path": "/content/korareguard/benchmarks/prompts/prompts.csv",
+      "sha256": "500b4a99439f004b433e68da53d4832cb35dcda74eb7c1c75b829b3c2abd5419",
+      "bytes": 274295
+    },
+    "glossary.json": {
+      "path": "/content/korareguard/defense/glossary.json",
+      "sha256": "c18a4a6c1cda46a74491b2e56c1aa40c6c8bc49713ffb20138648982ccce7e62",
+      "bytes": 7437
+    }
+  },
+  "model_id": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
+  "model_revision": "870ae18c091f06f8f96e4119051f4cd063c83481",
+  "chunking": {
+    "budget": 77,
+    "stride": 62,
+    "overlap": 15
+  },
+  "order": "priority",
+  "n_prompts": 432,
+  "n_views_expected": 2835,
+  "n_views_written": 2835,
+  "n_new": 1885,
+  "n_error": 0,
+  "complete": true,
+  "aborted_on_consecutive_errors": false,
+  "elapsed_seconds": 9073.13,
+  "seconds_per_view": 4.813,
+  "environment": {
+    "python": "3.12.13",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "torch": "2.11.0+cu128",
+    "transformers": "5.14.1"
+  }
+}
