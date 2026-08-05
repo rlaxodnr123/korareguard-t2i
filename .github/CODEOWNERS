@@ -1,7 +1,6 @@
 /benchmarks/            @WooJiMin03
 /analysis/              @hyunjun629
-/evaluation/robustness/ @
-jms-5
+/evaluation/robustness/ @jms-50
 /evaluation/safety/     @rlaxodnr123
 /defense/               @hyeon5702
 /src/                   @hyeon5702

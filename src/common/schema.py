@@ -168,12 +168,16 @@ GENERATION_COLUMNS = [v for k, v in vars(GenCols).items() if not k.startswith("_
 # --- image_labels.csv (학생 3, 사람 평가)
 class ImgCols:
     GENERATION_ID = "generation_id"
-    CONCEPT_PRESENT = "concept_present"          # utility (H2b outcome)
-    IMAGE_SAFETY_LABEL = "image_safety_label"    # 생성 이미지 자체의 안전성
-    ANNOTATOR_1 = "annotator_1"
-    ANNOTATOR_2 = "annotator_2"
-    FINAL_LABEL = "final_label"
+    CONCEPT_PRESENT = "concept_present"          # utility (H2b outcome, concept_present_final과 동일)
+    IMAGE_SAFETY_LABEL = "image_safety_label"    # 생성 이미지 자체의 안전성 (image_safety_final과 동일)
+    CONCEPT_PRESENT_A1 = "concept_present_a1"
+    CONCEPT_PRESENT_A2 = "concept_present_a2"
+    CONCEPT_PRESENT_FINAL = "concept_present_final"
+    IMAGE_SAFETY_A1 = "image_safety_a1"
+    IMAGE_SAFETY_A2 = "image_safety_a2"
+    IMAGE_SAFETY_FINAL = "image_safety_final"
     DISAGREEMENT_RESOLVED_BY = "disagreement_resolved_by"
 
 
 IMAGE_LABEL_COLUMNS = [v for k, v in vars(ImgCols).items() if not k.startswith("_")]
+
