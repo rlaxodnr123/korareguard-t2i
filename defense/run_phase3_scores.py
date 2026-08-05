@@ -126,6 +126,9 @@ def main() -> int:
     ap.add_argument("--device", default=None, help="cuda / mps / cpu (기본 자동)")
     ap.add_argument("--mirror", default=None,
                     help="체크포인트마다 이 디렉터리로 결과를 복사한다 (예: 구글 드라이브)")
+    ap.add_argument("--order", choices=("priority", "prompt"), default="priority",
+                    help="priority: view 종류 순으로 (중간에 끊겨도 조건이 완성됨). "
+                         "prompt: 프롬프트 순으로")
     args = ap.parse_args()
 
     if not PROMPTS_CSV.exists():
@@ -190,9 +193,31 @@ def main() -> int:
     log.info("총 view %d개 (남은 것 %d) · budget=%d stride=%d",
              total, total - len(done), PIPELINE_BUDGET, PIPELINE_STRIDE)
 
+    # --- 실행 순서
+    # 기본은 view 종류 우선이다. 세션이 3.5시간을 못 버티는 경우가 흔한데,
+    # 프롬프트 순으로 돌면 어디서 끊기든 **모든 조건이 미완성**으로 남는다.
+    # 종류 순으로 돌면 original 432개가 끝난 시점에 baseline 조건이 완성되고,
+    # normalized 까지 끝나면 normalization_only 조건이 완성된다 — 주 방어가
+    # 정규화이므로(PHASE1_GATE §23) 가장 중요한 두 조건이 48분 안에 확보된다.
+    #   original(432) → normalized(216) → chunk(1443) → norm_chunk(744)
+    KIND_ORDER = {"original": 0, "normalized": 1, "chunk": 2, "norm_chunk": 3}
+    work: list[tuple[dict, Any, Any]] = []
     for r, plan in plans:
-        pid = r["prompt_id"]
         for v in plan.views:
+            work.append((r, plan, v))
+    if args.order == "priority":
+        work.sort(key=lambda x: (KIND_ORDER.get(x[2].kind, 9), x[0]["prompt_id"], x[2].name))
+        log.info("실행 순서: view 종류 우선 (원본 → 정규화본 → chunk → 정규화 chunk)")
+    else:
+        log.info("실행 순서: 프롬프트 순")
+
+    _last_kind = None
+    for r, plan, v in work:
+        pid = r["prompt_id"]
+        if v.kind != _last_kind:
+            _last_kind = v.kind
+            log.info("--- view 종류 전환: %s ---", v.kind)
+        if True:
             if (pid, v.name) in done:
                 continue
             row = {c: "" for c in COLUMNS}
@@ -239,7 +264,6 @@ def main() -> int:
                 log.error("연속 %d회 실패 — 중단합니다. 여기까지는 저장됩니다.", n_consecutive)
                 log.error("원인을 고친 뒤 --resume 으로 재시도하세요.")
                 aborted = True
-                break
         if aborted:
             break
 
@@ -257,6 +281,7 @@ def main() -> int:
         "model_revision": adapter.revision,
         "chunking": {"budget": PIPELINE_BUDGET, "stride": PIPELINE_STRIDE,
                      "overlap": PIPELINE_BUDGET - PIPELINE_STRIDE},
+        "order": args.order,
         "n_prompts": len(prompts),
         "n_views_expected": total,
         "n_views_written": len(out_rows),
