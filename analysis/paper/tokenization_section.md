@@ -104,9 +104,9 @@ characters; the common form is longer in 19 of 24 concepts.
 
 **Normalizing by character count reverses the direction.** Measured as tokens per
 character, rare expressions are more finely segmented in **19/24** concept pairs
-for SGuard (median difference +0.217) and **21/24** for AltDiffusion (median
-+0.271). In absolute terms, SGuard segments rare expressions at 1.22 tokens per
-character versus 1.00 for common; AltDiffusion at 0.90 versus 0.68.
+for SGuard (median difference +0.207) and **21/24** for AltDiffusion (median
++0.257). In absolute terms, SGuard segments rare expressions at 1.22 tokens per
+character versus 1.00 for common; AltDiffusion at 0.89 versus 0.68.
 
 The effect appears independently in both tokenizers, which have different
 vocabularies (49,152 vs. 250,002) and different segmentation algorithms
@@ -237,7 +237,7 @@ key position.
 
 A byte-level BPE introduces a further failure mode: because a Korean syllable may
 span several tokens, a cut can fall inside a syllable. This occurred within the
-key expression in 5 rows, leaving a partial character that decodes to U+FFFD. We
+key expression in 4 rows, leaving a partial character that decodes to U+FFFD. We
 therefore report key retention both in tokens and in fully-recovered characters;
 for one prompt the token-level ratio was 0.50 while the character-level ratio was
 0.25.
@@ -341,7 +341,7 @@ middle and back positions by one to two tokens in 5 of 48 (concept, rarity)
 combinations for SGuard; AltDiffusion's SentencePiece shows no such variation
 (0/48). Reporting a single occurrence would make the paired statistic depend on
 which position happened to be selected — for SGuard, the front-only figures are
-+0.221 and 4/24 against +0.217 and 3/24 for the other two positions. We therefore
++0.218 against +0.207 for the other two positions. We therefore
 report the median across all nine realizations. Note that in the deployed input
 the front position is also preceded by a space (from the template's `"Prompt: "`
 marker), so the majority value is the one that matches what the model receives.
