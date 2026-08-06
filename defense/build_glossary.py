@@ -18,9 +18,12 @@ build_glossary.py — KoRareGuard-T2I / Student 5
 2. **검증되지 않은 의미 동일성.** 표현쌍이 실제로 같은 뜻인지 검토하는 것은
    학생1 의 필수 업무다. 내가 새 문장을 만들면 그 검토를 우회하게 된다.
 
-그래서 주석문으로 **벤치마크의 일반 표현을 그대로** 쓴다. 이미 학생1 이 C2 기준
-(concept 별 쌍 동일성)으로 검증했고, 24/24 통과가 기록돼 있다
-(`analysis/truncation/benchmark_variant_comparison.md`).
+그래서 주석문으로 **벤치마크의 일반 표현을 그대로** 쓴다. 표현쌍의 의미 동일성은
+학생1 이 전수 검토했고 그 기록을 아래 REVIEW 에 남겼다.
+
+주의: 학생2 의 `benchmark_variant_comparison.md` 의 C2(24/24)는 세 후보 파일이
+**같은 쌍을 쓰는지**를 대조한 것이지 쌍의 의미가 같은지를 본 것이 아니다.
+둘을 혼동하지 않는다.
 
 결과적으로 이 사전에는 내 주관적 판단이 들어가지 않는다. prompts.csv 에서
 기계적으로 유도되며, 재생성하면 항상 같은 파일이 나온다.
@@ -63,6 +66,27 @@ from src.common.io import input_provenance, read_csv  # noqa: E402
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 OUT_JSON = REPO / "defense" / "glossary.json"
 
+# ---------------------------------------------------------------- 검토 기록
+# 여기 두는 이유: glossary.json 에 직접 써 넣으면 이 스크립트를 다시 돌릴 때
+# 날아간다. 사전은 prompts.csv 에서 기계적으로 재생성되므로, 사람이 남긴 사실은
+# 생성기 쪽에 있어야 재생성을 견딘다.
+REVIEW = {
+    "reviewed_by": "우지민 (@WooJiMin03) — 학생1",
+    "reviewed_at": "2026-08-05",
+    "scope": "24개 concept 의 (희귀 표현, 일반 표현) 쌍 전수",
+    "outcome": (
+        "표현쌍 전수를 검토해 잘못된 것을 수정했다. UNSAFE_CRIM_24 의 희귀 표현이 "
+        "'볏짚 불지르기'(볏짚을 태우는 농사 행위)였는데 짝인 일반 표현은 "
+        "'건물에 불을 지르는 방화'여서 의미가 어긋났다 — 오히려 SAFE_CULT_03 "
+        "'쥐불놀이'(논밭에 불을 놓는 민속놀이, safe 라벨)에 가까웠다. "
+        "'초가집 불지르기'로 고쳐 짝을 맞췄다. 나머지 23개는 그대로 확정했다."
+    ),
+    "verifiable": (
+        "UNSAFE_CRIM_24 수정은 commit 63c417b 에 남아 있다. 나머지 23개의 확정은 "
+        "본인 확인이며 저장소에 별도 산출물은 없다."
+    ),
+}
+
 
 def build() -> dict:
     rows = read_csv(str(PROMPTS_CSV))
@@ -93,9 +117,7 @@ def build() -> dict:
             "gloss": common,          # 주석문 = 벤치마크의 일반 표현 (학생1 C2 검증본)
             "safety_label": v["safety_label"],
             "hazard_category": v["hazard_category"],
-            # 학생1 검토 전이다. 검토 후 이 필드를 채운다.
-            "reviewed_by": None,
-            "review_note": "",
+            "reviewed_by": REVIEW["reviewed_by"],
         })
 
     return {
@@ -109,6 +131,7 @@ def build() -> dict:
             "사전이 평가 대상 벤치마크에서 유도되므로 표현 커버리지가 100% 다. "
             "측정되는 정규화 효과는 실현값이 아니라 상한이다."
         ),
+        "review": REVIEW,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "inputs": input_provenance([str(PROMPTS_CSV.relative_to(REPO))]),
         "n_entries": len(entries),
@@ -148,7 +171,7 @@ def main() -> int:
 
     OUT_JSON.write_text(json.dumps(g, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  기록: {OUT_JSON}")
-    print("  ! reviewed_by 가 전부 null 입니다 — 학생1 검토 후 채우세요.")
+    print(f"  검토: {REVIEW['reviewed_by']} · {REVIEW['scope']}")
     return 0
 
 
