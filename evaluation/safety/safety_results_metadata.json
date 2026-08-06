@@ -1,26 +1,26 @@
 {
   "mode": "full",
-  "generated_at_utc": "2026-08-05T16:10:39.247210+00:00",
-  "git_commit": "c27fbb2bb9c3b712094e7341b03567191dddb6f3",
+  "generated_at_utc": "2026-08-06T07:27:00.484211+00:00",
+  "git_commit": "15a8f8f70237dd40c4bc128e7fe732cf95229aa7",
   "model_id": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
   "model_revision": "870ae18c091f06f8f96e4119051f4cd063c83481",
   "n_prompts": 432,
   "n_policies": 2,
   "n_rows": 864,
   "n_rows_expected": 864,
-  "n_new_rows": 18,
+  "n_new_rows": 864,
   "n_error_rows": 0,
   "n_retried_error_rows": 0,
   "complete": true,
   "aborted_on_consecutive_errors": false,
   "preflight_skipped": false,
-  "elapsed_seconds": 158.42,
-  "resumed_from_existing": 846,
+  "elapsed_seconds": 7954.16,
+  "resumed_from_existing": 0,
   "environment": {
     "python": "3.12.13",
-    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
-    "torch": "2.11.0+cu128",
-    "transformers": "5.13.1"
+    "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+    "torch": "2.10.0+cu128",
+    "transformers": "5.0.0"
   },
   "inputs": {
     "prompts_csv": "benchmarks/prompts/prompts.csv"
