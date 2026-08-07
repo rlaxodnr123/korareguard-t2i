@@ -9,3 +9,5 @@ venv/
 outputs/
 ai-sec-env/
 AGENTS.md
+# macOS 잡파일 — 팀 전원이 맥/윈도 혼용이라 저장소에 들어오면 계속 충돌한다
+.DS_Store
