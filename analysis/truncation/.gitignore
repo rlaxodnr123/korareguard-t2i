@@ -1,6 +1,28 @@
-# tokenization_results.csv 는 analyze_tokens.py 가 4초 만에 재생성하는 파생 산출물이다.
-# 1.3MB 이고 prompts.csv 가 바뀔 때마다 통째로 달라지므로 git 에 넣지 않는다.
-# 재현에 필요한 정보는 run_metadata.json (모델 revision / 환경 / git commit) 에 남는다.
+# tokenization_results.csv 는 analyze_tokens.py 가 만드는 파생 산출물이다.
+# git 에 넣지 않기로 정했다 (2026-08-07). 이 결정은 아래 측정에 근거한다.
 #
-# 팀에 결과를 공유해야 할 시점이 오면 이 규칙을 풀고 커밋 여부를 팀과 합의한다.
+# 재생성:  python analysis/truncation/analyze_tokens.py --full --overwrite
+#
+#   - 캐시가 있으면 4.5초, 토크나이저를 새로 받으면 26.5초.
+#     받는 것은 토크나이저 파일 8.2MB 이고 모델 가중치가 아니다.
+#   - 재생성본이 원본과 완전히 일치한다 — 1,296행 x 55컬럼 차이 0건.
+#     56번째 컬럼 runtime_ms 는 행별 벽시계 값이라 매번 다르다. 최신 여부를 볼 때는
+#     파일 해시가 아니라 이 컬럼을 뺀 나머지를 비교할 것.
+#   - 재생성에 필요한 입력은 전부 git 에 있다 —
+#     benchmarks/prompts/prompts.csv, analysis/ 의 스크립트,
+#     src/common/config.py (모델 id 와 revision), src/common/schema.py.
+#   - 모델 revision 이 config 에 고정돼 있어 언제 누가 돌려도 같은 값이 나온다.
+#     고정 전에는 업스트림이 바뀌면 조용히 다른 스냅샷으로 실행될 수 있었다.
+#   - 실행 환경과 실제 로드된 snapshot SHA 는 run_metadata.json 에 남는다.
+#
+# 안 올려서 감수하는 것:
+#   - 새로 clone 하면 검사 스크립트 6개가 이 파일을 못 찾아 즉시 실패한다.
+#     (validate_results / verify_safety_section / verify_prose_claims /
+#      root_cause --selftest / figure_a / analyze_budget_consumption)
+#     검증하기 전에 위 재생성 명령을 먼저 돌려야 한다.
+#   - 네트워크나 HuggingFace 접근이 막힌 환경에서는 재생성 자체가 불가능하다.
+#     그래서 논문 부록에 재생성 명령을 싣기로 했다.
+#   - prompts.csv 가 바뀌었을 때 이전 결과와 비교할 수 없다.
+#
+# 다시 논의하려면 위 근거가 바뀌었는지부터 확인할 것. 이 결정은 세 번 올라왔었다.
 *.csv
