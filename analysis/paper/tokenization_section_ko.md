@@ -546,10 +546,32 @@ context 는 131,072 토큰이므로, 모든 프롬프트가 온전히 입력됐�
 
 ## 보류 (팀 결과 대기)
 
-| 절 | 필요한 것 |
+입력 두 개 중 하나는 도착했고 하나는 비어 있다. 상태를 나눠 적는다
+(2026-08-07 기준).
+
+| 입력 | 상태 |
 |---|---|
-| H6 — 생성 결과와의 연관 (그림 F) | `generation_results.csv`, `image_labels.csv` |
+| `generation_results.csv` | **도착** — 432행, 오류 0건, `image_path` 432행 모두 채워짐, seed 42 단일 |
+| `image_labels.csv` | **행은 있으나 라벨이 비어 있음** — 432행이 `generation_id` 로 전부 조인되지만, 라벨 컬럼 9개가 모두 공란 |
+
+| 절 | 막고 있는 것 |
+|---|---|
+| H6 — 생성 결과와의 연관 (그림 F) | `image_labels.csv` 의 `concept_present_final` / `image_safety_final` |
 | 근본원인 사례 분석 (생성 쪽) | 위와 같음 |
+
+즉 남은 것은 생성이 아니라 **사람 라벨링**이다. `analysis/root_cause.py` 는
+`--generation` 만으로도 4·5절(H2a·H2b)의 골격을 이미 출력하지만, 라벨이 없으면
+`concept_present` 를 셀 수 없어 `판단 불가` 로 표시한다. 이 값을 0 으로 적으면
+"생성 모델이 개념을 그리지 못했다" 로 오독되므로 그렇게 쓰지 않는다.
+
+라벨이 채워지면 다음 순서로 진행한다.
+
+```bash
+python analysis/validate_team_inputs.py --labels evaluation/generation/image_labels.csv
+python analysis/root_cause.py --safety evaluation/safety/safety_results.csv \
+    --generation evaluation/generation/generation_results.csv \
+    --labels evaluation/generation/image_labels.csv
+```
 
 > **작성 메모** — 근본원인 절은 두 갈래로 나뉜다.
 > under-blocking 이 발생했을 때 `key_visibility` 가 `none`/`partial` 이면 절단이
