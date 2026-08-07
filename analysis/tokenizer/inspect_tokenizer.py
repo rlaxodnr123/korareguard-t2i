@@ -51,9 +51,12 @@ log = logging.getLogger("inspect_tokenizer")
 # 'text_safety' 와 어긋나 통합 join 이 조용히 0 행이 된다.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from src.common import schema  # noqa: E402
+from src.common import config  # noqa: E402  — 모델 id / revision 의 팀 공용 SSOT
 
-SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
-ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
+SGUARD_MODEL_ID = config.SGUARD_MODEL_ID
+SGUARD_REVISION = config.SGUARD_REVISION
+ALTDIFF_MODEL_ID = config.ALTDIFF_MODEL_ID
+ALTDIFF_REVISION = config.ALTDIFF_REVISION
 ALTDIFF_TOKENIZER_SUBFOLDER = "tokenizer"
 ALTDIFF_TEXT_ENCODER_SUBFOLDER = "text_encoder"
 
@@ -482,12 +485,16 @@ def main() -> int:
     # ================= SGuard =================
     print(f"\n{SEP}\nSAFETY FILTER : {SGUARD_MODEL_ID}\n{SEP}")
     try:
-        sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
+        sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID, revision=SGUARD_REVISION)
     except Exception as exc:
         log.error("SGuard tokenizer 로드 실패: %s", exc)
         return 1
 
+    # revision 을 함께 남긴다. 이 파일이 기록하는 vocab / padding_side /
+    # truncation_side 는 논문 X.2 가 인용하는 실측값인데, 어느 스냅샷에서 잰
+    # 값인지 적혀 있지 않으면 나중에 유효성을 확인할 방법이 없다.
     sg: dict[str, Any] = {"model_id": tagged(SGUARD_MODEL_ID, "config"),
+                          "revision": tagged(SGUARD_REVISION, "config"),
                           "model_role": tagged(schema.ROLE_TEXT_SAFETY, "config")}
     sg.update(basic_metadata(sg_tok))
     print_metadata("SGuard tokenizer runtime",
@@ -517,13 +524,15 @@ def main() -> int:
           f"(subfolder={ALTDIFF_TOKENIZER_SUBFOLDER})\n{SEP}")
     try:
         ad_tok = AutoTokenizer.from_pretrained(
-            ALTDIFF_MODEL_ID, subfolder=ALTDIFF_TOKENIZER_SUBFOLDER)
+            ALTDIFF_MODEL_ID, revision=ALTDIFF_REVISION,
+            subfolder=ALTDIFF_TOKENIZER_SUBFOLDER)
     except Exception as exc:
         log.error("AltDiffusion tokenizer 로드 실패: %s", exc)
         log.error("sentencepiece 설치 여부 확인 (analysis/requirements.txt)")
         return 1
 
     ad: dict[str, Any] = {"model_id": tagged(ALTDIFF_MODEL_ID, "config"),
+                          "revision": tagged(ALTDIFF_REVISION, "config"),
                           "tokenizer_subfolder": tagged(ALTDIFF_TOKENIZER_SUBFOLDER, "config"),
                           "model_role": tagged(schema.ROLE_GENERATOR, "config")}
     ad.update(basic_metadata(ad_tok))

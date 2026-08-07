@@ -53,11 +53,16 @@ from key_span import (  # noqa: E402
 )
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+from src.common import config  # noqa: E402  — 모델 id / revision 의 팀 공용 SSOT
+
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 REPORT_MD = Path(__file__).resolve().parent / "length_calibration_report.md"
 
-SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
-ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
+SGUARD_MODEL_ID = config.SGUARD_MODEL_ID
+SGUARD_REVISION = config.SGUARD_REVISION
+ALTDIFF_MODEL_ID = config.ALTDIFF_MODEL_ID
+ALTDIFF_REVISION = config.ALTDIFF_REVISION
 
 EXPERIMENTAL_TOKEN_CAP = 77          # 연구가 정의한 cap. native limit 아님
 
@@ -107,8 +112,9 @@ def main() -> int:
         rows = list(csv.DictReader(f))
     print(f"prompts.csv rows: {len(rows)}")
 
-    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
-    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, subfolder="tokenizer")
+    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID, revision=SGUARD_REVISION)
+    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, revision=ALTDIFF_REVISION,
+                                           subfolder="tokenizer")
     ad_declared = int(ad_tok.model_max_length)
     # diffusers 는 tokenizer(padding='max_length', max_length=77, truncation=True) 를 쓴다.
     # HF 는 special token 자리를 먼저 확보한 뒤 content 를 자르므로 실제 content 예산은
@@ -152,8 +158,9 @@ def main() -> int:
 
     meta = {r["prompt_id"]: r for r in rows}
     md: list[str] = ["# PHASE 3 — Length Calibration & Signal Preview", ""]
-    md.append(f"- 프롬프트 {len(rows)}개 × 3조건 = {len(rows)*3}행, error {n_error}건, "
-              f"{elapsed:.1f}초")
+    # 실행 시간은 콘솔에만 찍는다. 리포트에 넣으면 실행할 때마다 값이 달라져서,
+    # "재생성 후 diff 가 비어야 stale 이 아니다" 라는 검사가 매번 오탐을 낸다.
+    md.append(f"- 프롬프트 {len(rows)}개 × 3조건 = {len(rows)*3}행, error {n_error}건")
     md.append(f"- SGuard experimental token cap: **{EXPERIMENTAL_TOKEN_CAP}** "
               f"(user content budget, native limit 아님)")
     md.append(f"- AltDiffusion declared max length: **{ad_declared}** (runtime), "

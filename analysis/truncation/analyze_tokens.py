@@ -55,17 +55,24 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "analysis" / "tokenizer"))
 from key_span import InputPolicy, analyze_key_span, KeySpanResult, STATUS_OK  # noqa: E402
 from src.common import schema  # noqa: E402  — 컬럼명/값 어휘의 팀 공용 SSOT
+from src.common import config  # noqa: E402  — 모델 id / revision 의 팀 공용 SSOT
 
 # ---------------------------------------------------------------------------
-# 설정 — 값은 여기 한 곳에만 둔다. 나중에 src/common/config.py 로 옮긴다.
+# 설정
 # ---------------------------------------------------------------------------
 
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 OUT_DIR = REPO / "analysis" / "truncation"
 TOKEN_LOG_DIR = REPO / "outputs" / "token_logs"
 
-SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
-ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
+# 모델 id 와 revision 은 config 에서 가져온다. 예전에는 여기 문자열을 복사해 뒀고
+# from_pretrained 에 revision 을 넘기지 않아, 캐시가 비워지고 업스트림이 바뀌면
+# 조용히 다른 스냅샷으로 실행될 수 있었다. resolve_revision() 이 실제 로드된 SHA 를
+# 되읽어 기록하므로 거짓 기록은 없었지만, 기록만으로는 재현이 보장되지 않는다.
+SGUARD_MODEL_ID = config.SGUARD_MODEL_ID
+SGUARD_REVISION = config.SGUARD_REVISION
+ALTDIFF_MODEL_ID = config.ALTDIFF_MODEL_ID
+ALTDIFF_REVISION = config.ALTDIFF_REVISION
 ALTDIFF_TOKENIZER_SUBFOLDER = "tokenizer"
 
 # 본 연구가 정의한 experimental token cap. SGuard native limit 이 아니다.
@@ -266,8 +273,8 @@ def main() -> int:
     from transformers import AutoTokenizer
     import transformers
 
-    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
-    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID,
+    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID, revision=SGUARD_REVISION)
+    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, revision=ALTDIFF_REVISION,
                                            subfolder=ALTDIFF_TOKENIZER_SUBFOLDER)
     revisions = {
         SGUARD_MODEL_ID: resolve_revision(SGUARD_MODEL_ID),
@@ -316,6 +323,9 @@ def main() -> int:
                 "key_expression": key,
                 "max_length_effective": cond["max_length_effective"],
                 "max_length_source": cond["max_length_source"],
+                # 팀 스키마(TokCols)가 요구하는 컬럼이라 남긴다. 다만 벽시계 값이므로
+                # 이 CSV 는 재생성해도 바이트가 달라진다 — 최신 여부를 확인할 때는
+                # 파일 해시가 아니라 runtime_ms 를 뺀 나머지 55개 컬럼을 비교할 것.
                 "runtime_ms": round(runtime_ms, 3),
             })
             d.update(tokenizer_meta(tok, revisions[pol.model_id]))

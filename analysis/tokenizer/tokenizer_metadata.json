@@ -38,6 +38,10 @@
       "value": "SamsungSDS-Research/SGuard-ContentFilter-2B-v1",
       "source": "config"
     },
+    "revision": {
+      "value": "870ae18c091f06f8f96e4119051f4cd063c83481",
+      "source": "config"
+    },
     "model_role": {
       "value": "text_safety",
       "source": "config"
@@ -283,6 +287,10 @@
   "altdiffusion": {
     "model_id": {
       "value": "BAAI/AltDiffusion-m18",
+      "source": "config"
+    },
+    "revision": {
+      "value": "b3c429d6aa48346ab421ea314375d4a10b9b66e9",
       "source": "config"
     },
     "tokenizer_subfolder": {

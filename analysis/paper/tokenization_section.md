@@ -30,6 +30,10 @@ Three input conditions are analyzed:
 | 2 | SGuard-ContentFilter-2B-v1 | `constrained_77` | 77 tokens |
 | — | AltDiffusion-m18 | `native` | 75 tokens |
 
+Both models are pinned by revision — SGuard-ContentFilter-2B-v1 at `870ae18`,
+AltDiffusion-m18 at `b3c429d` (full hashes and library versions in
+`analysis/truncation/run_metadata.json`).
+
 All three are defined in **content-token space** — the tokens of the user prompt
 itself, excluding special tokens and chat-template scaffolding. This is required
 for the two components to be comparable at all, and each component's fixed
@@ -204,12 +208,17 @@ level truncation is saturated and offers no gradient.
 ## X.6 Position and key retention (RQ-T5, RQ-T7)
 
 Key position was manipulated by string construction (front / middle / back).
-We verified that this manipulation survives tokenization. The normalized token
-centre of the key is 0.038 (range 0.004–0.324) for front, 0.506 (0.437–0.550)
-for middle and 0.954 (0.649–0.993) for back: **the three ranges do not overlap**,
-so the character-level manipulation preserves separation in token space. The
-token centre deviates from the character centre by a median of 0.006 (p90 0.042,
-max 0.102), and the two components differ from each other by a median of 0.012
+We verified that this manipulation survives tokenization. Measured with the
+SGuard tokenizer (condition 1), the normalized token centre of the key is 0.038
+(range 0.004–0.324) for front, 0.506 (0.437–0.550) for middle and 0.954
+(0.649–0.993) for back: **the three ranges do not overlap**, so the
+character-level manipulation preserves separation in token space. AltDiffusion
+shows the same gradient (medians 0.041 / 0.475 / 0.946), with a marginal overlap
+between the front maximum (0.354) and the middle minimum (0.350) affecting 2 of
+the 288 rows involved; the median separation is preserved. The token centre
+deviates from the character centre by a median of 0.006 (p90 0.042, max 0.102)
+for SGuard and 0.012 (p90 0.066, max 0.150) for AltDiffusion, and the two
+components differ from each other by a median of 0.012
 (max 0.121). Token-level repositioning was not attempted, as it would require a
 different prompt string per component and would make the cross-component
 comparison in X.7 undefined.

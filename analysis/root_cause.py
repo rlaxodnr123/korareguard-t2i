@@ -421,18 +421,31 @@ def report(cases: list[dict], avail: dict[str, Optional[Path]],
     if any(c["n_generations"] for c in cases):
         print(f"\n{SEP}\n[4] H2a — 필터 미차단 + 생성 모델이 개념을 렌더링\n{SEP}")
         md += ["## 4. H2a — 필터 미차단 + 생성 성공", "",
-               "| input_policy | under_block | AltDiff 핵심표현 full | concept_present > 0 |",
-               "|---|---|---|---|"]
+               "| input_policy | under_block | AltDiff 핵심표현 full | 라벨된 것 | concept_present > 0 |",
+               "|---|---|---|---|---|"]
+        n_labeled_total = 0
         for pol in policies:
             u = [x for x in by_pol[pol] if x["outcome"] == OUT_UNDER]
             vis = [x for x in u if x["altdiff_key_visibility"] == schema.VISIBILITY_FULL]
-            realized = [x for x in vis if x["concept_present_rate"]
-                        and float(x["concept_present_rate"]) > 0]
+            # 라벨이 안 된 행과 "라벨했더니 0" 인 행을 반드시 구분한다. 둘을 합치면
+            # 라벨링 전에는 항상 0 이 나오고, 그게 "생성 모델이 개념을 못 그렸다" 로
+            # 읽힌다. 실제로는 아무도 아직 판단하지 않았다는 뜻일 뿐이다.
+            labeled = [x for x in vis if x["concept_present_rate"] != ""]
+            realized = [x for x in labeled if float(x["concept_present_rate"]) > 0]
+            n_labeled_total += len(labeled)
+            shown = str(len(realized)) if labeled else "판단 불가"
             print(f"  {pol:18} under {len(u):>4}   AltDiff full {len(vis):>4}   "
-                  f"실제 렌더링 {len(realized):>4}")
-            md.append(f"| `{pol}` | {len(u)} | {len(vis)} | {len(realized)} |")
+                  f"라벨됨 {len(labeled):>4}   실제 렌더링 {shown:>8}")
+            md.append(f"| `{pol}` | {len(u)} | {len(vis)} | {len(labeled)} | {shown} |")
         md += ["", "마지막 열이 H2a 가 실제로 실현된 사례다. 필터가 통과시킨 뒤",
                "생성 모델이 해당 개념을 실제로 그려낸 경우를 뜻한다.", ""]
+        if n_labeled_total == 0:
+            warn = ("**주의 — `image_labels.csv` 의 `concept_present` 가 아직 비어 있다. "
+                    "마지막 열의 `판단 불가` 는 '생성 모델이 개념을 그리지 못했다' 가 "
+                    "아니라 '아직 아무도 판단하지 않았다' 는 뜻이다. H2a 는 라벨링이 "
+                    "끝나기 전까지 검정할 수 없다.**")
+            print(f"\n  {warn.replace('**','')}")
+            md += [warn, ""]
 
         # ---- 5. H2b — 유용성 손실
         print(f"\n{SEP}\n[5] H2b — AltDiffusion 절단에 따른 유용성 손실\n{SEP}")
@@ -451,6 +464,12 @@ def report(cases: list[dict], avail: dict[str, Optional[Path]],
             m = sum(grp[v]) / len(grp[v])
             print(f"  AltDiff {v:8} n={len(grp[v]):>4}  concept_present 평균 {m:.3f}")
             md.append(f"| `{v}` | {len(grp[v])} | {m:.3f} |")
+        if not any(grp[v] for v in schema.ALL_VISIBILITY):
+            # 헤더만 남은 빈 표는 "측정했더니 아무것도 없었다" 로 읽힌다. 명시한다.
+            msg = ("**`concept_present` 가 채워진 행이 하나도 없어 H2b 를 계산할 수 "
+                   "없다. 라벨링 이후 다시 실행할 것.**")
+            print(f"  {msg.replace('**','')}")
+            md += ["| — | — | — |", "", msg, ""]
         md += ["", "핵심 표현이 잘린 쪽에서 concept_present 가 낮다면, 생성 모델의",
                "절단이 유용성을 떨어뜨렸음을 시사한다.", ""]
 
@@ -582,6 +601,16 @@ def selftest() -> int:
     ck("판정 불가 라벨은 두 비율 모두 공란", len(b) == 1
        and b[0]["concept_present_rate"] == "" and b[0]["image_unsafe_rate"] == "",
        f"concept={b[0]['concept_present_rate']!r}, unsafe={b[0]['image_unsafe_rate']!r}")
+
+    # 4·5절이 "미라벨" 과 "라벨했더니 0" 을 구분하는가.
+    # 구분하지 않으면 라벨링 전에는 H2a 가 항상 0건으로 나오고, 그게 "생성 모델이
+    # 개념을 못 그렸다" 로 읽힌다. 같은 부류(빈 값을 0/False 로 접기)의 결함을
+    # 이 파일에서 이미 두 번 고쳤으므로 회귀 검사를 둔다.
+    ck("미라벨 행은 concept_present_rate 가 0.0 이 아니라 공란",
+       b[0]["concept_present_rate"] != "0.0" and b[0]["concept_present_rate"] != 0.0,
+       repr(b[0]["concept_present_rate"]))
+    ck("미라벨 행도 생성 자체는 1건으로 센다",
+       b[0]["n_generations"] == 1, str(b[0]["n_generations"]))
 
     # --- 조인 (실제 토큰 결과 사용)
     if TOK_CSV.exists():

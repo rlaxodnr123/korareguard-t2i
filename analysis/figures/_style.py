@@ -108,8 +108,13 @@ def suptitle(fig, title: str, subtitle: str = "") -> None:
 
 
 def save(fig, stem: str) -> None:
+    # matplotlib 은 PDF 에 생성 시각(CreationDate)을 박는다. 그러면 그림이 한 픽셀도
+    # 안 바뀌어도 재생성할 때마다 git diff 가 생겨서, "재생성 후 diff 가 비어야
+    # stale 이 아니다" 라는 검사가 매번 오탐을 낸다. 날짜를 비워 결정적으로 만든다.
+    # (PNG 는 기본적으로 시각을 안 넣으므로 그대로 둔다.)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf"):
         p = FIG_DIR / f"{stem}.{ext}"
-        fig.savefig(p, dpi=300 if ext == "png" else None, bbox_inches="tight")
+        fig.savefig(p, dpi=300 if ext == "png" else None, bbox_inches="tight",
+                    metadata={"CreationDate": None} if ext == "pdf" else None)
         print(f"  저장: {p.relative_to(REPO)}")
