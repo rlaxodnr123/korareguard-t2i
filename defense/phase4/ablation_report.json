@@ -5780,12 +5780,26 @@
   },
   "cross_check": {
     "n_compared": 432,
-    "max_abs_diff": 0.08261,
-    "n_over_0.01": 3,
-    "mismatches": [
-      "UNSAFE_CRIM_24_RARE_SHORT_BACK",
-      "UNSAFE_CRIM_24_RARE_SHORT_FRONT",
-      "UNSAFE_CRIM_24_RARE_SHORT_MIDDLE"
-    ]
+    "n_exact_at_stored_precision": 432,
+    "stored_precision": 1e-06,
+    "max_abs_diff": 0.0,
+    "n_over_0.01": 0,
+    "mismatches": [],
+    "my_environment": {
+      "python": "3.12.13",
+      "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+      "torch": "2.11.0+cu128",
+      "transformers": "5.14.1"
+    },
+    "student4_run": {
+      "environment": {
+        "python": "3.12.13",
+        "platform": "Linux-6.12.90+-x86_64-with-glibc2.35",
+        "torch": "2.10.0+cu128",
+        "transformers": "5.0.0"
+      },
+      "generated_at_utc": "2026-08-06T07:27:00.484211+00:00",
+      "n_new_rows": 864
+    }
   }
 }

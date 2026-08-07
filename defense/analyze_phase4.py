@@ -400,7 +400,15 @@ def print_coverage(views, meta, over_budget=5.6, rule=RULE_MAX,
 
 
 def cross_check(views, meta) -> dict:
-    """원본 view 점수를 학생4 의 safety_results.csv 와 대조한다 (무료 검산)."""
+    """원본 view 점수를 학생4 의 safety_results.csv 와 대조한다 (무료 검산).
+
+    "일치"의 정확한 의미: 두 CSV 모두 unsafe_score 를 소수 6자리로 저장하므로,
+    여기서 세는 것은 부동소수 비트 동일성이 아니라 **저장 정밀도(1e-6)에서의
+    동일성**이다. 그 이상은 파일에 남아 있지 않아 확인할 수 없다.
+
+    두 실행의 라이브러리 버전을 함께 기록한다. 버전이 다른데도 값이 같다면
+    "같은 코드를 두 번 돌렸다"가 아니라 구현·환경 독립 재현이라는 뜻이다.
+    """
     if not STUDENT4_CSV.exists():
         return {"status": "학생4 결과 파일 없음"}
     theirs = {r["prompt_id"]: float(r["unsafe_score"])
@@ -411,18 +419,43 @@ def cross_check(views, meta) -> dict:
     if not both:
         return {"status": "겹치는 프롬프트 없음"}
     diffs = [(p, abs(mine[p] - theirs[p])) for p in both]
+    equal = [p for p, d in diffs if d == 0.0]
     big = [(p, d) for p, d in diffs if d > 0.01]
+
+    their_env: dict[str, Any] = {}
+    meta_path = STUDENT4_CSV.with_name("safety_results_metadata.json")
+    if meta_path.exists():
+        m = json.loads(meta_path.read_text(encoding="utf-8"))
+        their_env = {"environment": m.get("environment", {}),
+                     "generated_at_utc": m.get("generated_at_utc"),
+                     "n_new_rows": m.get("n_new_rows")}
+    # meta 는 프롬프트별 메타라 실행 환경이 없다. Phase 3 의 run_metadata 에서 읽는다.
+    my_env: dict[str, Any] = {}
+    my_meta_path = SCORES_CSV.with_name("run_metadata.json")
+    if my_meta_path.exists():
+        my_env = json.loads(my_meta_path.read_text(encoding="utf-8")).get("environment", {})
+
     print("\n" + "=" * 92)
     print("  교차검증 — 내 원본 view vs 학생4 safety_results.csv (native)")
     print("=" * 92)
     print(f"  겹치는 프롬프트 {len(both)}개 · 최대 차이 {max(d for _, d in diffs):.6f}")
+    print(f"  저장 정밀도(1e-6)에서 완전 일치 {len(equal)}개 / 불일치 {len(both) - len(equal)}개")
     print(f"  0.01 초과 불일치 {len(big)}개")
     for p, d in big[:5]:
         print(f"    {p}  내 {mine[p]:.4f}  vs  학생4 {theirs[p]:.4f}  (차이 {d:.4f})")
     if big:
         print("  ! 불일치는 prompts.csv 버전 차이일 수 있다 (UNSAFE_CRIM_24 수정).")
-    return {"n_compared": len(both), "max_abs_diff": round(max(d for _, d in diffs), 6),
-            "n_over_0.01": len(big), "mismatches": [p for p, _ in big[:20]]}
+    print(f"  내 실행    : torch {my_env.get('torch', '?')} · "
+          f"transformers {my_env.get('transformers', '?')}")
+    print(f"  학생4 실행 : torch {their_env.get('environment', {}).get('torch', '?')} · "
+          f"transformers {their_env.get('environment', {}).get('transformers', '?')}")
+
+    return {"n_compared": len(both),
+            "n_exact_at_stored_precision": len(equal),
+            "stored_precision": 1e-6,
+            "max_abs_diff": round(max(d for _, d in diffs), 6),
+            "n_over_0.01": len(big), "mismatches": [p for p, _ in big[:20]],
+            "my_environment": my_env, "student4_run": their_env}
 
 
 def main() -> int:
