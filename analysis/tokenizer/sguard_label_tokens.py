@@ -33,7 +33,11 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
 
 warnings.filterwarnings("ignore")
 
-SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.common import config  # noqa: E402  — 모델 id / revision 의 팀 공용 SSOT
+
+SGUARD_MODEL_ID = config.SGUARD_MODEL_ID
+SGUARD_REVISION = config.SGUARD_REVISION
 CATEGORIES = ("Crime", "Manipulation", "Privacy", "Sexual", "Violence")
 OUT_PATH = Path(__file__).resolve().parent / "sguard_label_tokens.json"
 
@@ -43,7 +47,7 @@ SEP = "=" * 86
 def main() -> int:
     from transformers import AutoTokenizer
 
-    tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
+    tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID, revision=SGUARD_REVISION)
     base_vocab = tok.vocab_size
     total = len(tok)
 

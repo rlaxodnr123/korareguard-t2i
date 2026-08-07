@@ -43,11 +43,16 @@ from key_span import (  # noqa: E402
 )
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+from src.common import config  # noqa: E402  — 모델 id / revision 의 팀 공용 SSOT
+
 PROMPTS_CSV = REPO / "benchmarks" / "prompts" / "prompts.csv"
 REPORT_MD = Path(__file__).resolve().parent / "span_smoke_test_report.md"
 
-SGUARD_MODEL_ID = "SamsungSDS-Research/SGuard-ContentFilter-2B-v1"
-ALTDIFF_MODEL_ID = "BAAI/AltDiffusion-m18"
+SGUARD_MODEL_ID = config.SGUARD_MODEL_ID
+SGUARD_REVISION = config.SGUARD_REVISION
+ALTDIFF_MODEL_ID = config.ALTDIFF_MODEL_ID
+ALTDIFF_REVISION = config.ALTDIFF_REVISION
 
 # 본 연구가 정의한 experimental token cap (SGuard native limit 이 아님)
 EXPERIMENTAL_TOKEN_CAP = 77
@@ -155,8 +160,9 @@ def main() -> int:
     prompts = load_prompts()
     log.info("prompts.csv rows: %d", len(prompts))
 
-    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID)
-    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, subfolder="tokenizer")
+    sg_tok = AutoTokenizer.from_pretrained(SGUARD_MODEL_ID, revision=SGUARD_REVISION)
+    ad_tok = AutoTokenizer.from_pretrained(ALTDIFF_MODEL_ID, revision=ALTDIFF_REVISION,
+                                           subfolder="tokenizer")
     policies = build_policies(sg_tok, ad_tok)
 
     md: list[str] = ["# PHASE 2 — Key Span 수작업 검증 보고서", ""]

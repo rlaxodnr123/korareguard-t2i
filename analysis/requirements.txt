@@ -25,7 +25,15 @@ protobuf==7.35.1
 pandas==3.0.5
 numpy==2.5.1
 
-# --- 아래는 아직 불필요. 실제 generation pipeline 검증 단계에서만 추가 ---
-# torch
-# diffusers
-# matplotlib      # PHASE 9 figures
+# 그림 5장(analysis/figures/figure_*.py). 논문이 "수치 재산출 후 figures/*.py 실행"
+# 을 안내하므로 선택 사항이 아니다.
+matplotlib==3.11.1
+
+# --- 아래는 모델 가중치를 실제로 로드하는 검증에만 필요하다 ---
+# 안 깔아도 분석 본체(analyze_tokens / validate_results / figures / 논문 검사기)는
+# 전부 돌아간다. 아래 세 파일만 못 돈다:
+#   verify_sguard_behavior.py       torch  (SGuard 추론 게이트)
+#   verify_adapter_agreement.py     torch  (팀 어댑터 대조)
+#   verify_altdiffusion_pipeline.py torch, diffusers (생성 파이프라인 게이트)
+# torch==2.13.0
+# diffusers==0.39.0
