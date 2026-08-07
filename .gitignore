@@ -11,3 +11,6 @@ ai-sec-env/
 AGENTS.md
 # macOS 잡파일 — 팀 전원이 맥/윈도 혼용이라 저장소에 들어오면 계속 충돌한다
 .DS_Store
+# JetBrains — workspace.xml 에 로컬 절대경로와 열어둔 탭이 들어가서,
+# 두 사람이 같이 쓰면 커밋마다 충돌한다. 개인 IDE 설정은 각자 로컬에 둔다.
+.idea/
