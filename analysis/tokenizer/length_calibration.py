@@ -152,8 +152,9 @@ def main() -> int:
 
     meta = {r["prompt_id"]: r for r in rows}
     md: list[str] = ["# PHASE 3 — Length Calibration & Signal Preview", ""]
-    md.append(f"- 프롬프트 {len(rows)}개 × 3조건 = {len(rows)*3}행, error {n_error}건, "
-              f"{elapsed:.1f}초")
+    # 실행 시간은 콘솔에만 찍는다. 리포트에 넣으면 실행할 때마다 값이 달라져서,
+    # "재생성 후 diff 가 비어야 stale 이 아니다" 라는 검사가 매번 오탐을 낸다.
+    md.append(f"- 프롬프트 {len(rows)}개 × 3조건 = {len(rows)*3}행, error {n_error}건")
     md.append(f"- SGuard experimental token cap: **{EXPERIMENTAL_TOKEN_CAP}** "
               f"(user content budget, native limit 아님)")
     md.append(f"- AltDiffusion declared max length: **{ad_declared}** (runtime), "

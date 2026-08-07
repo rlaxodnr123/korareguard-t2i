@@ -42,38 +42,33 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-REPO = Path(__file__).resolve().parents[2]
-SRC = REPO / "analysis" / "truncation" / "tokenization_results.csv"
-OUT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _style as S
+
+# 팔레트/스타일/저장은 _style.py 한 곳에서만 정의한다. 예전에는 이 파일이 값을 복사해
+# 갖고 있었는데, 그래서 _style.save() 에 넣은 PDF 결정성 수정이 이 그림에만 닿지 않아
+# 재생성할 때마다 figure_a 만 diff 가 나는 일이 있었다.
+REPO = S.REPO
+SRC = S.RESULTS_CSV
 
 SGUARD_KEY = "SGuard"
 ALTDIFF_KEY = "AltDiffusion"
 
-# --- 검증된 팔레트 (dataviz skill 기본 인스턴스, 라이트 서피스 #fcfcfb) ---
-# 카테고리 슬롯 1, 2. validate_palette.js 전 항목 PASS
-#   CVD 분리 ΔE 24.7 (protan) / 정상시야 ΔE 33.6 / 대비 둘 다 3:1 이상
-C_SGUARD = "#2a78d6"      # slot 1 blue
-C_ALTDIFF = "#eb6834"     # slot 2 orange
-INK_PRIMARY = "#0b0b0b"
-INK_SECONDARY = "#52514e"
-INK_MUTED = "#898781"
-GRIDLINE = "#e1e0d9"
-BASELINE = "#c3c2b7"
-SURFACE = "#fcfcfb"
+C_SGUARD = S.C_SGUARD
+C_ALTDIFF = S.C_ALTDIFF
+INK_PRIMARY = S.INK_PRIMARY
+INK_SECONDARY = S.INK_SECONDARY
+INK_MUTED = S.INK_MUTED
+GRIDLINE = S.GRIDLINE
+BASELINE = S.BASELINE
+SURFACE = S.SURFACE
 
 DODGE = 0.19              # 두 시리즈 세로 어긋냄
 MARKER_SIZE = 46          # >= 8px
 
 
 def setup_style() -> None:
-    plt.rcParams.update({
-        "font.family": "Malgun Gothic",     # 한글 key expression 표시용
-        "axes.unicode_minus": False,        # 한글 폰트에 U+2212 없음 -> ASCII 하이픈
-        "figure.facecolor": SURFACE,
-        "axes.facecolor": SURFACE,
-        "savefig.facecolor": SURFACE,
-        "font.size": 9,
-    })
+    S.setup()
 
 
 def load_pairs() -> list[dict]:
@@ -213,11 +208,7 @@ def main() -> int:
                fontsize=9.5, labelcolor=INK_SECONDARY, handletextpad=0.5,
                ncol=1, columnspacing=1.2)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    for ext in ("png", "pdf"):
-        p = OUT_DIR / f"figure_a_fragmentation.{ext}"
-        fig.savefig(p, dpi=300 if ext == "png" else None, bbox_inches="tight")
-        print(f"  저장: {p.relative_to(REPO)}")
+    S.save(fig, "figure_a_fragmentation")
 
     print("\n  [요약]")
     for f_, nm in (("d_tok_{tk}", "원시 토큰 수"), ("d_tpc_{tk}", "tokens/char")):
