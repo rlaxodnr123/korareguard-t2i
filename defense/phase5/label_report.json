@@ -1,0 +1,97 @@
+{
+  "phase": 5,
+  "purpose": "원고 7절 · 8.7절이 요구하는 인간 라벨 기반 결과",
+  "inputs": {
+    "image_labels.csv": {
+      "path": "/Users/ihyeon-u/Desktop/글인프/korareguard-t2i/evaluation/generation/image_labels.csv",
+      "sha256": "4953511df2a99748423dddca8585d457b6f0e146b70f5720f6da56767b260c23",
+      "bytes": 30213
+    },
+    "generation_results.csv": {
+      "path": "/Users/ihyeon-u/Desktop/글인프/korareguard-t2i/evaluation/generation/generation_results.csv",
+      "sha256": "0e754f284b2f28fcd7170b6fb745deff7ec5495f33f5588af0b538d503564ef1",
+      "bytes": 87612
+    },
+    "safety_results.csv": {
+      "path": "/Users/ihyeon-u/Desktop/글인프/korareguard-t2i/evaluation/safety/safety_results.csv",
+      "sha256": "2e0c7dc320899e11670fd29609d3e2cff96a212f42087f8f93aa35c84bdbe5d9",
+      "bytes": 188437
+    },
+    "prompts.csv": {
+      "path": "/Users/ihyeon-u/Desktop/글인프/korareguard-t2i/benchmarks/prompts/prompts.csv",
+      "sha256": "500b4a99439f004b433e68da53d4832cb35dcda74eb7c1c75b829b3c2abd5419",
+      "bytes": 274295
+    },
+    "view_scores.csv": {
+      "path": "/Users/ihyeon-u/Desktop/글인프/korareguard-t2i/defense/phase3/view_scores.csv",
+      "sha256": "0ba354192781fb55bc33d8af1896402557dcc7f041b77235a7d8298ba38fdee9",
+      "bytes": 451247
+    }
+  },
+  "validation": {
+    "n_rows": 432,
+    "filled": {
+      "concept_present": 0,
+      "image_safety_label": 0,
+      "concept_present_a1": 0,
+      "concept_present_a2": 0,
+      "concept_present_final": 0,
+      "image_safety_a1": 0,
+      "image_safety_a2": 0,
+      "image_safety_final": 0
+    },
+    "complete": false,
+    "problems": []
+  },
+  "agreement": {
+    "concept_present": {
+      "n": 0,
+      "status": "표본 없음"
+    },
+    "image_safety": {
+      "n": 0,
+      "status": "표본 없음"
+    }
+  },
+  "utility": {
+    "status": "라벨 미완"
+  },
+  "harm": {
+    "status": "라벨 미완"
+  },
+  "generation_success": {
+    "target_under_blocking": 65.7,
+    "p_used": null,
+    "conditions": {
+      "baseline": {
+        "over_blocking": 8.796,
+        "tau": 0.025957,
+        "usable_rate": 0.912,
+        "success_rate": null,
+        "delta_pp_vs_baseline": null
+      },
+      "normalization_only": {
+        "over_blocking": 6.019,
+        "tau": 0.071591,
+        "usable_rate": 0.9398,
+        "success_rate": null,
+        "delta_pp_vs_baseline": null
+      },
+      "chunk_only": {
+        "over_blocking": 10.185,
+        "tau": 0.148047,
+        "usable_rate": 0.8981,
+        "success_rate": null,
+        "delta_pp_vs_baseline": null
+      },
+      "combined": {
+        "over_blocking": 2.315,
+        "tau": 0.307358,
+        "usable_rate": 0.9769,
+        "success_rate": null,
+        "delta_pp_vs_baseline": null
+      }
+    },
+    "note": "(1-과탐) 차이는 P=1 기준. 성공률 차이는 P 배로 축소된다. P 독립인 것은 부호와 순위뿐이다."
+  }
+}
