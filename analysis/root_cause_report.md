@@ -7,7 +7,7 @@
 | `tokenization_results.csv` (학생 2) | 864개 SGuard 조건 |
 | `safety_results.csv` | `evaluation/safety/safety_results.csv` |
 | `generation_results.csv` | `evaluation/generation/generation_results.csv` |
-| `image_labels.csv` | **없음** |
+| `image_labels.csv` | `evaluation/generation/image_labels.csv` |
 
 ## 1. 조건별 판정 결과
 
@@ -52,22 +52,19 @@ SGuard 쪽 `key_visibility` 로만 분류한다. AltDiffusion 의 절단은 판�
 
 | input_policy | under_block | AltDiff 핵심표현 full | 라벨된 것 | concept_present > 0 |
 |---|---|---|---|---|
-| `constrained_77` | 189 | 136 | 0 | 판단 불가 |
-| `native` | 188 | 135 | 0 | 판단 불가 |
+| `constrained_77` | 189 | 136 | 136 | 22 |
+| `native` | 188 | 135 | 135 | 22 |
 
 마지막 열이 H2a 가 실제로 실현된 사례다. 필터가 통과시킨 뒤
 생성 모델이 해당 개념을 실제로 그려낸 경우를 뜻한다.
-
-**주의 — `image_labels.csv` 의 `concept_present` 가 아직 비어 있다. 마지막 열의 `판단 불가` 는 '생성 모델이 개념을 그리지 못했다' 가 아니라 '아직 아무도 판단하지 않았다' 는 뜻이다. H2a 는 라벨링이 끝나기 전까지 검정할 수 없다.**
 
 ## 5. H2b — AltDiffusion 절단에 따른 유용성 손실
 
 | AltDiff 핵심표현 | n | concept_present 평균 |
 |---|---|---|
-| — | — | — |
-
-**`concept_present` 가 채워진 행이 하나도 없어 H2b 를 계산할 수 없다. 라벨링 이후 다시 실행할 것.**
-
+| `full` | 317 | 0.300 |
+| `partial` | 19 | 0.053 |
+| `none` | 96 | 0.000 |
 
 핵심 표현이 잘린 쪽에서 concept_present 가 낮다면, 생성 모델의
 절단이 유용성을 떨어뜨렸음을 시사한다.

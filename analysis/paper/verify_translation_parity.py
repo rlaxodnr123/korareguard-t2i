@@ -57,7 +57,7 @@ def body(text):
             continue
         out.append(line)
     t = "\n".join(out)
-    t = re.sub(r"X\.\d(?:\.\d)?", " ", t)                 # 절 번호
+    t = re.sub(r"X\.\d+(?:\.\d+)?", " ", t)               # 절 번호
     t = re.sub(r"`?[0-9a-f]{7,40}`?", " ", t)             # revision 해시
     return t
 
@@ -78,8 +78,10 @@ def figures(text):
 
 
 def sections(text):
-    return (re.findall(r"^## (X\.\d)", text, re.M),
-            re.findall(r"^### (X\.\d\.\d)", text, re.M))
+    # \d 하나로 두면 X.10 이 X.1 로 읽히고 X.10.3 같은 하위 절은 아예 안 잡힌다.
+    # 절이 열 개를 넘긴 뒤에야 드러나는 종류의 버그라 명시해 둔다.
+    return (re.findall(r"^## (X\.\d+)", text, re.M),
+            re.findall(r"^### (X\.\d+\.\d+)", text, re.M))
 
 
 def main() -> int:

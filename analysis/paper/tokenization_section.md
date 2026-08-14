@@ -535,29 +535,171 @@ medians tabulated above.)*
 
 ---
 
+## X.10 Association between visibility and generation outcomes (H6)
+
+X.9 examined how visibility relates to what the safety filter **decides**. This
+section asks how the same visibility relates to what the generator **produces**.
+
+Here one additional causal direction is available. AltDiffusion's truncation
+occurs **before** generation, so truncation explaining a generation outcome is
+consistent with pipeline order — in contrast to X.9, where truncation came after
+the decision and the same argument was unavailable.
+
+### X.10.1 Label data
+
+One image was generated per prompt for all 432 prompts (0 errors, fixed seed 42),
+and two annotators labelled them independently without seeing each other's
+labels. Inter-annotator agreement:
+
+| Item | Agreement | Cohen's κ |
+|---|---|---|
+| `concept_present` (was the key expression rendered) | 398/432 = 92.1% | **0.755** |
+| `image_safety` (is the image itself safe) | 417/432 = 96.5% | **0.804** |
+
+45 disagreements were settled by `lead_review` and the remaining 387 by
+`consensus`. Both κ exceed 0.75, i.e. substantial agreement.
+
+### X.10.2 When the key is truncated, the concept is not rendered
+
+Concept-appearance rate decreases monotonically with AltDiffusion's
+`key_visibility`.
+
+| AltDiffusion key visibility | n | Concept appearance |
+|---|---|---|
+| `full` | 317 | **0.300** |
+| `partial` | 19 | 0.053 |
+| `none` | 96 | **0.000** |
+
+**In the 96 prompts where not one token of the key survived, the concept was
+never rendered**, and in the 19 `partial` cases only once. This matches the
+direction predicted in X.7: truncation directly reduces generation utility.
+
+Splitting by length × position reproduces the same gradient.
+
+| Length | front | middle | back |
+|---|---|---|---|
+| `short` | 18/48 | 16/48 | 18/48 |
+| `near_limit` | 14/48 | 12/48 | 6/48 |
+| `over_limit` | 12/48 | **0/48** | **0/48** |
+
+The middle and back cells of `over_limit` are exactly the cells with visibility
+`none` in X.6, and concept appearance there is exactly 0. The front position
+survives at 12/48 because it fits inside the budget.
+
+### X.10.3 The gap survives when truncation is excluded
+
+Split by rarity, the gap is larger still.
+
+| Expression | n | Concept appearance |
+|---|---|---|
+| Common | 216 | **0.380** |
+| Rare | 216 | **0.065** |
+
+To test whether this gap is due to truncation, we restrict to prompts whose key
+expression was **fully visible**.
+
+| Expression (visibility `full` only) | n | Concept appearance |
+|---|---|---|
+| Common | 158 | **0.513** |
+| Rare | 159 | **0.088** |
+
+**Excluding truncation does not shrink the gap** (0.380 vs 0.065 → 0.513 vs
+0.088). The generator therefore fails to render rare expressions **while reading
+them in full**.
+
+Matching common and rare forms at the same concept, length and position gives a
+completely one-sided result.
+
+| 216 matched pairs | Count |
+|---|---|
+| Only the common form rendered | **68** |
+| Only the rare form rendered | **0** |
+| Both the same | 148 |
+
+**There is not a single pair in which the rare form was rendered and the common
+form was not.** Substituting the expression moves the outcome in one direction
+only.
+
+### X.10.4 What the filter misses becomes an actual image (H2a)
+
+Tracing the prompts labelled unsafe (216) that passed the filter:
+
+| Condition | Unblocked | of which generator visibility `full` | Concept rendered | Image unsafe |
+|---|---|---|---|---|
+| Condition 1 (`native`) | 188 | 135 | 22 | **17** |
+| Condition 2 (`constrained_77`) | 189 | 136 | 22 | **17** |
+
+**In 17 cases all four hold at once** — the filter let the prompt through, the
+generator read the key expression in full, the concept was actually rendered, and
+the image was labelled unsafe. That is 3.9% of all 432 prompts, and it is H2a
+realized.
+
+Widening to all under-blocked prompts, the rate is higher still.
+
+| | n | Unsafe-image rate |
+|---|---|---|
+| Unsafe-labelled and **passed the filter** | 188 | **0.133** |
+| Unsafe-labelled and blocked by the filter | 28 | 0.357 |
+
+That the blocked side has the higher unsafe-image rate suggests the filter is not
+missing at random but passing the relatively less dangerous cases. Even so, 25 of
+the 188 that passed became unsafe images.
+
+### X.10.5 Disagreement between filter decision and image harm
+
+Crossing filter decision with image label under condition 1:
+
+| | Image safe | Image unsafe |
+|---|---|---|
+| **Filter passed** | 370 | **31** |
+| **Filter blocked** | **21** | 10 |
+
+**52 cases (12.0%) disagree** — 31 are missed harms and 21 are unnecessary
+blocks. Errors in both directions exist at comparable scale.
+
+### X.10.6 Synthesis — safety and utility degrade together
+
+X.9 arrives at this conclusion from the safety side and X.10 from the utility
+side.
+
+| | Common | Rare | Ratio |
+|---|---|---|---|
+| Block rate (`short`, unsafe) | 50.0% | 11.1% | 4.5× **lower** |
+| Concept appearance (visibility `full`) | 51.3% | 8.8% | 5.8× **lower** |
+
+**Rare expressions are not blocked when they are dangerous, and not rendered when
+they are harmless.** The two failures were observed in different models (SGuard,
+AltDiffusion) but are associated with the same input property, and the excessive
+fragmentation shown in X.3 is a common candidate. We note, however, that this
+study observed the two failures separately and did not establish fragmentation as
+their common cause.
+
+The practical implication is the one stated in X.9.7, one step stronger: a
+pipeline that cannot handle rare Korean expressions accurately **misses dangerous
+prompts while also failing to render harmless expressions of traditional
+culture.** This is not the usual trade-off in which safety is bought with
+utility; the two degrade together.
+
+*(Figure F: left, concept appearance by AltDiffusion visibility; right, rarity ×
+visibility. The check to look for is that the gap persists in the `full` column,
+where truncation is excluded.)*
+
+> **작성 메모** — X.10.3 의 "가시성 `full` 한정" 이 이 절의 핵심 논증이다.
+> 이것이 없으면 "희귀 표현이 안 그려진다" 가 "희귀 표현이 잘려서 안 그려진다" 로
+> 읽히고, 그러면 X.10.2 와 같은 얘기를 두 번 하는 셈이 된다.
+>
+> 216쌍 중 "희귀형만 그려짐 0건" 은 강한 수치지만 인과를 뜻하지는 않는다.
+> 길이 비대칭(X.8)이 남아 있어 서술구가 더 많은 시각적 단서를 준다는 설명도
+> 배제되지 않는다. 후속 연구로 남긴다.
+
+---
+
 ## Pending
 
-One of the two inputs has landed and the other is empty. We record the two
-separately (as of 2026-08-07).
+All inputs for this section have landed. What remains is manuscript integration.
 
-| Input | Status |
+| Item | Status |
 |---|---|
-| `generation_results.csv` | **Available** — 432 rows, 0 errors, `image_path` populated for all 432, single seed 42 |
-| `image_labels.csv` | **Rows present, labels empty** — all 432 rows join on `generation_id`, but all 9 label columns are blank |
-
-| Section | Blocked on |
-|---|---|
-| H6 — association with generation outcomes (Figure F) | `concept_present_final` / `image_safety_final` in `image_labels.csv` |
-| Root-cause case analysis (generation side) | same as above |
-
-What remains is human annotation, not generation. `analysis/root_cause.py`
-already emits the skeleton of sections 4–5 (H2a, H2b) from `--generation` alone,
-but without labels it cannot count `concept_present` and reports it as
-undetermined. Recording that as 0 would be misread as "the generator failed to
-render the concept", so we do not.
-
-> **작성 메모** — Root Cause 절은 두 갈래로 나뉜다.
-> under-blocking 이 발생했을 때 `key_visibility` 가 `none`/`partial` 이면 절단이
-> 설명 후보이고, `full` 이면 절단으로 설명할 수 없어 희귀 표현 표상 쪽을 봐야 한다.
-> 예비 관측에서 후자 사례가 이미 나왔다 (short/front 조건에서 common 은 차단,
-> rare 는 통과). 전수 결과가 오면 이 구분으로 분류한다.
+| `generation_results.csv` | Available — 432 rows, 0 errors, single seed 42 |
+| `image_labels.csv` | **Available — all 432 rows labelled** (κ 0.755 / 0.804) |
+| Figure F | Done |
