@@ -364,10 +364,23 @@ def print_generation_success(rows: dict[str, dict], p_safe: float | None) -> dic
     label = {p: m["safety_label"] for p, m in meta.items()}
     conds = (COND_BASELINE, COND_NORM_ONLY, COND_CHUNK_ONLY, COND_COMBINED)
 
+    # 결합확률을 직접 세려면 프롬프트별 concept_present 가 필요하다.
+    # (1-과탐)×P 는 차단과 개념 등장이 독립일 때만 맞는데, 실제로는 독립이 아니다.
+    concept = {r["prompt_id"]: r[schema.ImgCols.CONCEPT_PRESENT].lower() == "true"
+               for r in rows.values()
+               if r[schema.ImgCols.CONCEPT_PRESENT].lower() in BOOL_VALUES}
+    safe_p = [p for p in views if label[p] == "safe"]
+    have_concept = all(p in concept for p in safe_p) and bool(safe_p)
+    n_safe = len(safe_p)
+    n_concept = sum(1 for p in safe_p if concept[p]) if have_concept else None
+
     out: dict[str, Any] = {"target_under_blocking": MATCHED_UNDER_TARGET,
-                           "p_used": p_safe, "conditions": {}}
-    print(f"  {'조건':22s}{'과탐율':>9s}{'(1-과탐)':>11s}{'× P':>11s}{'baseline 대비':>14s}")
-    base_abs = None
+                           "p_used": p_safe, "n_safe_prompts": n_safe,
+                           "n_safe_with_concept": n_concept, "conditions": {}}
+
+    print(f"  {'조건':22s}{'과탐율':>8s}{'차단':>6s}{'중 개념':>8s}"
+          f"{'차단분P':>9s}{'결합':>9s}{'곱셈근사':>10s}{'baseline 대비':>14s}")
+    base_joint = None
     for c in conds:
         sc = condition_scores(views, c, RULE_MAX)
         got = over_at(pareto_front(sc, label), MATCHED_UNDER_TARGET)
@@ -377,31 +390,59 @@ def print_generation_success(rows: dict[str, dict], p_safe: float | None) -> dic
             continue
         ob, tau = got
         rel = 1 - ob / 100
-        absv = rel * p_safe if p_safe is not None else None
-        if c == COND_BASELINE:
-            base_abs = absv
-        delta = (absv - base_abs) * 100 if (absv is not None and base_abs is not None) else None
-        print(f"  {c:22s}{ob:8.1f}%{100*rel:10.1f}%"
-              + (f"{100*absv:10.1f}%" if absv is not None else f"{'— × P':>11s}")
-              + (f"{delta:+13.1f}pp" if delta is not None else f"{'':>14s}"))
-        out["conditions"][c] = {"over_blocking": round(ob, 3), "tau": round(tau, 6),
-                                "usable_rate": round(rel, 4),
-                                "success_rate": round(absv, 4) if absv is not None else None,
-                                "delta_pp_vs_baseline": round(delta, 2) if delta is not None else None}
+        approx = rel * p_safe if p_safe is not None else None
 
-    if p_safe is None:
-        print("\n  P 가 아직 없어 '× P' 열이 비어 있다. 과탐율 열과 조건 간 차이는 이미 확정이다.")
+        rec: dict[str, Any] = {"over_blocking": round(ob, 3), "tau": round(tau, 6),
+                               "usable_rate": round(rel, 4),
+                               "success_rate_multiplicative": round(approx, 4)
+                               if approx is not None else None}
+
+        if have_concept:
+            blocked = [p for p in safe_p if sc[p] >= tau]
+            blocked_concept = sum(1 for p in blocked if concept[p])
+            passed_concept = n_concept - blocked_concept
+            joint = passed_concept / n_safe
+            p_of_blocked = blocked_concept / len(blocked) if blocked else float("nan")
+            if c == COND_BASELINE:
+                base_joint = joint
+            delta = (joint - base_joint) * 100 if base_joint is not None else None
+            print(f"  {c:22s}{ob:7.1f}%{len(blocked):6d}{blocked_concept:8d}"
+                  f"{p_of_blocked:9.3f}{100*joint:8.1f}%"
+                  + (f"{100*approx:9.1f}%" if approx is not None else f"{'—':>10s}")
+                  + (f"{delta:+13.1f}pp" if delta is not None else f"{'':>14s}"))
+            rec.update({"n_blocked": len(blocked), "n_blocked_with_concept": blocked_concept,
+                        "p_of_blocked": round(p_of_blocked, 4),
+                        "n_passed_with_concept": passed_concept,
+                        "success_rate_joint": round(joint, 4),
+                        "delta_pp_vs_baseline_joint": round(delta, 2)
+                        if delta is not None else None})
+        else:
+            print(f"  {c:22s}{ob:7.1f}%{'':6s}{'':8s}{'':9s}{'':9s}"
+                  + (f"{100*approx:9.1f}%" if approx is not None else f"{'—':>10s}"))
+        out["conditions"][c] = rec
+
     print("\n  RESULTS.md §6 대조: baseline 8.8 / normalization_only 6.0 / "
           "chunk_only 10.2 / combined 2.3 (%)")
 
-    # 서술할 때 자주 틀리는 지점이라 매 실행에서 짚는다.
-    print("\n  [서술 주의] '(1-과탐)' 열의 차이(정규화 +2.8pp, combined +6.5pp)는 P=1 일 때의 값이다.")
-    print("  정상 생성 성공률의 차이는 그 값에 P 를 곱한 것이므로 P<1 이면 그만큼 작아진다.")
-    print("  P 와 무관하게 확정되는 것은 차이의 **부호와 조건 간 순위**이지 pp 단위 크기가 아니다.")
-    if p_safe is not None:
-        print(f"  현재 P={p_safe:.4f} 기준 정규화 이득 = {p_safe * 2.8:.1f}pp (P=1 이면 2.8pp)")
-    out["note"] = ("(1-과탐) 차이는 P=1 기준. 성공률 차이는 P 배로 축소된다. "
-                   "P 독립인 것은 부호와 순위뿐이다.")
+    if not have_concept:
+        print("\n  concept_present 가 아직 비어 결합확률 열을 못 낸다. 과탐율 열은 이미 확정이다.")
+        out["note"] = "라벨 미충전 — 과탐율만 확정."
+        return out
+
+    # 여기서 반복해서 틀렸다. 곱셈 근사는 차단과 개념 등장의 독립을 가정하는데
+    # 실제로는 조건마다 '무엇을 막는가'가 달라서 독립이 아니다. 결합확률이 정답이다.
+    print("\n  [서술 주의] '곱셈근사' 열은 차단과 개념 등장이 독립일 때만 맞는다.")
+    print("  '차단분P' 열이 조건마다 다르다는 것이 곧 독립이 아니라는 증거다.")
+    print("  RESULTS.md §6 과 논문은 '결합' 열을 쓴다. 곱셈근사 열은 대조용으로만 남긴다.")
+    print(f"  안전 프롬프트 {n_safe}개 중 개념 등장 {n_concept}개 (P={p_safe:.4f})")
+
+    jr = [(c, r["success_rate_joint"]) for c, r in out["conditions"].items()
+          if "success_rate_joint" in r]
+    spread = max(v for _, v in jr[1:]) - min(v for _, v in jr[1:]) if len(jr) > 1 else 0.0
+    print(f"  baseline 을 뺀 세 조건의 결합확률 폭 = {100*spread:.1f}pp "
+          f"({round(spread * n_safe)}개 프롬프트). 이 표본으로는 셋을 구분할 수 없다.")
+    out["note"] = ("곱셈 근사는 차단·개념등장 독립을 가정해 성립하지 않는다. "
+                   "결합확률을 쓴다. baseline 만 분리되고 나머지 셋은 구분 불가.")
     return out
 
 
