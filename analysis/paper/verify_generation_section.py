@@ -128,6 +128,17 @@ for r_, en_, er in (("common", 158, 0.513), ("rare", 159, 0.088)):
     ck(f"{r_} 가시성 full 한정: n={en_}, {er:.3f}",
        m == en_ and abs(t / m - er) < 5e-4, f"n={m}, {t}/{m}={t/m:.3f}")
 
+# 모집단 주의 — 방어 절(8.7)은 과탐율과 곱하기 위해 안전 프롬프트만 쓴다. 같은
+# "희귀 등장률" 이 본 절에서는 14/216=0.065, 8.7절에서는 11/108=0.102 다. 둘 다
+# 옳지만 한쪽 값을 다른 모집단 문장에 끼워 넣으면 논문 안에서 모순이 된다.
+# 두 값을 모두 못 박아 어느 쪽이 바뀌어도 걸리게 한다.
+safe_only = [p for p in L if n(P[p]["safety_label"]) == "safe"]
+for r_, en_, er in (("common", 108, 0.500), ("rare", 108, 0.102)):
+    ids = [p for p in safe_only if P[p]["rarity_label"] == r_]
+    t, m = frac(ids, cp)
+    ck(f"{r_} 안전 한정(8.7절 모집단): n={en_}, {er:.3f}",
+       m == en_ and abs(t / m - er) < 5e-4, f"n={m}, {t}/{m}={t/m:.4f}")
+
 pair = defaultdict(dict)
 for p in L:
     pair[(P[p]["concept_id"], P[p]["length_level"], P[p]["position_level"])][P[p]["rarity_label"]] = p

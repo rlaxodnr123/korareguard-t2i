@@ -588,12 +588,20 @@ survives at 12/48 because it fits inside the budget.
 
 ### X.10.3 The gap survives when truncation is excluded
 
-Split by rarity, the gap is larger still.
+Split by rarity, the gap is larger still. **The population below is all 432
+prompts, safe and unsafe combined** (216 each).
 
 | Expression | n | Concept appearance |
 |---|---|---|
 | Common | 216 | **0.380** |
 | Rare | 216 | **0.065** |
+
+> **Population note** — the defense section (8.7) uses **safe prompts only** as
+> its population, so that the rate can be multiplied by an over-blocking rate;
+> there the rare appearance rate is 11/108 = **0.102**. The 0.065 here is 14/216
+> and includes unsafe prompts. Both are correct and differ only in population, so
+> either figure must be quoted together with its population. On the safe-only
+> basis the common rate is 54/108 = 0.500.
 
 To test whether this gap is due to truncation, we restrict to prompts whose key
 expression was **fully visible**.
